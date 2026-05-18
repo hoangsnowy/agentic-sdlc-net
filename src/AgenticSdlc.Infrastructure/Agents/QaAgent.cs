@@ -2,12 +2,10 @@
 // Phase 4 — Impl IQaAgent. Đánh giá nhất quán requirement-code-test.
 
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using AgenticSdlc.Application.Agents;
+using AgenticSdlc.Application.Prompts;
 using AgenticSdlc.Domain;
 using AgenticSdlc.Domain.Code;
 using AgenticSdlc.Domain.Llm;
@@ -24,35 +22,6 @@ namespace AgenticSdlc.Infrastructure.Agents;
 public sealed class QaAgent : IQaAgent
 {
     private const string AgentName = nameof(QaAgent);
-
-    private const string SystemPrompt = """
-        Bạn là QA Agent trong hệ thống Agentic SDLC.
-        Đánh giá nhất quán giữa 3 artefact: RequirementSpec, CodeArtifact, TestArtifact.
-
-        Trả về CHỈ JSON theo schema:
-        {
-          "score": 0.0-1.0,
-          "isConsistent": true|false,
-          "iterationNeeded": true|false,
-          "issues": [
-            {
-              "severity": "Critical|Major|Minor",
-              "category": "RequirementCoverage|CodeQuality|TestCoverage|Consistency",
-              "description": "Tiếng Việt, ngắn gọn",
-              "location": "file path hoặc requirement id (tuỳ chọn)"
-            }
-          ],
-          "recommendations": ["Khuyến nghị cho vòng regenerate kế tiếp"]
-        }
-
-        Quy tắc chấm điểm:
-        - score = 1.0 - (#Critical × 0.3 + #Major × 0.1 + #Minor × 0.03), clamp [0, 1].
-        - isConsistent = (score ≥ 0.8) AND (#Critical == 0).
-        - iterationNeeded = NOT isConsistent.
-        - Mỗi entity trong spec PHẢI có code class tương ứng (kiểm tra theo tên).
-        - Mỗi endpoint trong spec PHẢI có code map ROUTE tương ứng.
-        - Mỗi acceptanceCriteria PHẢI được phản ánh trong ≥ 1 test.
-        """;
 
     private readonly ILlmClient _llm;
     private readonly AgentOptions _options;
@@ -79,30 +48,9 @@ public sealed class QaAgent : IQaAgent
         System.ArgumentNullException.ThrowIfNull(code);
         System.ArgumentNullException.ThrowIfNull(tests);
 
-        var sb = new StringBuilder();
-        sb.AppendLine("Spec (entities + endpoints + acceptanceCriteria):");
-        sb.AppendLine(JsonSerializer.Serialize(new { spec.Entities, spec.Endpoints, spec.AcceptanceCriteria }, JsonExtractor.DefaultOptions));
-        sb.AppendLine();
-        sb.AppendLine("Code (files, abbreviated):");
-        sb.AppendLine(JsonSerializer.Serialize(code.Files.Select(f => new { f.Path, Excerpt = Excerpt(f.Content, 300) }), JsonExtractor.DefaultOptions));
-        sb.AppendLine();
-        sb.AppendLine("Tests (files + counts):");
-        sb.AppendLine(JsonSerializer.Serialize(new
-        {
-            tests.Framework,
-            tests.HappyPathCount,
-            tests.EdgeCaseCount,
-            tests.ErrorCaseCount,
-            tests.EstimatedCoveragePercent,
-            Files = tests.Files.Select(f => new { f.Path, Excerpt = Excerpt(f.Content, 300) }),
-        }, JsonExtractor.DefaultOptions));
-
-        sb.AppendLine();
-        sb.AppendLine("Sinh QaReport JSON.");
-
         var request = new LlmRequest(
-            SystemPrompt: SystemPrompt,
-            UserPrompt: sb.ToString(),
+            SystemPrompt: QaPrompt.System,
+            UserPrompt: QaPrompt.RenderUser(spec, code, tests),
             Model: _options.Model,
             Temperature: _options.Temperature,
             MaxTokens: _options.MaxTokens);
@@ -127,9 +75,6 @@ public sealed class QaAgent : IQaAgent
             Recommendations: dto.Recommendations ?? [],
             Metrics: metrics);
     }
-
-    private static string Excerpt(string content, int maxChars)
-        => string.IsNullOrEmpty(content) ? string.Empty : content.Length <= maxChars ? content : string.Concat(content.AsSpan(0, maxChars), "...");
 
     // ---- DTOs ----
     private sealed class QaReportDto

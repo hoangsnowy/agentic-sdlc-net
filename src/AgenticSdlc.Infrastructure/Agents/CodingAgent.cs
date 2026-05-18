@@ -3,11 +3,10 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using AgenticSdlc.Application.Agents;
+using AgenticSdlc.Application.Prompts;
 using AgenticSdlc.Domain;
 using AgenticSdlc.Domain.Code;
 using AgenticSdlc.Domain.Llm;
@@ -23,29 +22,6 @@ namespace AgenticSdlc.Infrastructure.Agents;
 public sealed class CodingAgent : ICodingAgent
 {
     private const string AgentName = nameof(CodingAgent);
-
-    private const string SystemPrompt = """
-        Bạn là Coding Agent trong hệ thống Agentic SDLC.
-        Sinh source code C# (.NET 10) theo kiến trúc Clean Architecture cho specification user cung cấp.
-
-        Trả về CHỈ JSON theo schema:
-        {
-          "projectName": "PascalCase",
-          "architecture": "Clean Architecture",
-          "files": [
-            { "path": "src/<Layer>/<File>.cs", "content": "<source code>", "language": "csharp" }
-          ],
-          "notes": "Ghi chú giả định / TODO (tiếng Việt)"
-        }
-
-        Quy tắc:
-        - PHẢI có ≥ 1 entity class trong layer Domain.
-        - PHẢI có ≥ 1 controller hoặc minimal API endpoint trong layer Api.
-        - Code phải compile với .NET 10 (nullable enable, file-scoped namespace).
-        - Path dùng forward slash.
-        - Nếu có previousFeedback: ưu tiên fix mọi issue Severity Critical/Major trong feedback.
-        - KHÔNG markdown fence quanh JSON, KHÔNG prose trước/sau.
-        """;
 
     private readonly ILlmClient _llm;
     private readonly AgentOptions _options;
@@ -69,35 +45,9 @@ public sealed class CodingAgent : ICodingAgent
     {
         System.ArgumentNullException.ThrowIfNull(spec);
 
-        var sb = new StringBuilder();
-        sb.AppendLine("Specification (JSON):");
-        sb.AppendLine(JsonSerializer.Serialize(new
-        {
-            spec.Title,
-            spec.Summary,
-            spec.Entities,
-            spec.Endpoints,
-            spec.AcceptanceCriteria,
-        }, JsonExtractor.DefaultOptions));
-
-        if (previousFeedback is not null)
-        {
-            sb.AppendLine();
-            sb.AppendLine("Previous QA feedback (cần fix trong lần này):");
-            sb.AppendLine(JsonSerializer.Serialize(new
-            {
-                previousFeedback.Score,
-                previousFeedback.Issues,
-                previousFeedback.Recommendations,
-            }, JsonExtractor.DefaultOptions));
-        }
-
-        sb.AppendLine();
-        sb.AppendLine("Sinh CodeArtifact JSON.");
-
         var request = new LlmRequest(
-            SystemPrompt: SystemPrompt,
-            UserPrompt: sb.ToString(),
+            SystemPrompt: CodingPrompt.System,
+            UserPrompt: CodingPrompt.RenderUser(spec, previousFeedback),
             Model: _options.Model,
             Temperature: _options.Temperature,
             MaxTokens: _options.MaxTokens);

@@ -3,11 +3,10 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using AgenticSdlc.Application.Agents;
+using AgenticSdlc.Application.Prompts;
 using AgenticSdlc.Domain;
 using AgenticSdlc.Domain.Code;
 using AgenticSdlc.Domain.Llm;
@@ -24,32 +23,6 @@ namespace AgenticSdlc.Infrastructure.Agents;
 public sealed class TestingAgent : ITestingAgent
 {
     private const string AgentName = nameof(TestingAgent);
-
-    private const string SystemPrompt = """
-        Bạn là Testing Agent trong hệ thống Agentic SDLC.
-        Sinh xUnit test cho code đã được Coding Agent sinh ra, dựa trên RequirementSpec.
-
-        Trả về CHỈ JSON theo schema:
-        {
-          "framework": "xUnit",
-          "files": [
-            { "path": "tests/<File>Tests.cs", "content": "<source>", "language": "csharp" }
-          ],
-          "happyPathCount": 0,
-          "edgeCaseCount": 0,
-          "errorCaseCount": 0,
-          "estimatedCoveragePercent": 0
-        }
-
-        Quy tắc:
-        - Mỗi class test 1 file riêng.
-        - PHẢI có ≥ 1 happy-path, ≥ 1 edge-case, ≥ 1 error-case.
-        - Dùng [Theory] + [InlineData] cho test có nhiều input variation.
-        - Assertion: Shouldly (vd .ShouldBe(...), .ShouldThrow<T>(...)).
-        - Mocking: NSubstitute nếu cần.
-        - Đảm bảo tests cover AcceptanceCriteria từ spec.
-        - estimatedCoveragePercent là ước tính, KHÔNG đo thật (≥ 60 cho prototype).
-        """;
 
     private readonly ILlmClient _llm;
     private readonly AgentOptions _options;
@@ -75,30 +48,9 @@ public sealed class TestingAgent : ITestingAgent
         System.ArgumentNullException.ThrowIfNull(spec);
         System.ArgumentNullException.ThrowIfNull(code);
 
-        var sb = new StringBuilder();
-        sb.AppendLine("Specification (acceptance criteria):");
-        sb.AppendLine(JsonSerializer.Serialize(spec.AcceptanceCriteria, JsonExtractor.DefaultOptions));
-        sb.AppendLine();
-        sb.AppendLine($"Code đã sinh ({code.Files.Count} file):");
-        foreach (var f in code.Files)
-        {
-            sb.AppendLine($"--- {f.Path} ---");
-            sb.AppendLine(f.Content);
-            sb.AppendLine();
-        }
-
-        if (previousFeedback is not null)
-        {
-            sb.AppendLine("Previous QA feedback (issue test coverage cần fix):");
-            sb.AppendLine(JsonSerializer.Serialize(previousFeedback.Issues, JsonExtractor.DefaultOptions));
-        }
-
-        sb.AppendLine();
-        sb.AppendLine("Sinh TestArtifact JSON.");
-
         var request = new LlmRequest(
-            SystemPrompt: SystemPrompt,
-            UserPrompt: sb.ToString(),
+            SystemPrompt: TestingPrompt.System,
+            UserPrompt: TestingPrompt.RenderUser(spec, code, previousFeedback),
             Model: _options.Model,
             Temperature: _options.Temperature,
             MaxTokens: _options.MaxTokens);
