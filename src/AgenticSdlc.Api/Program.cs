@@ -20,6 +20,12 @@ builder.Logging.AddSimpleConsole(options =>
 builder.Services.AddLlmGateway(builder.Configuration);
 builder.Services.AddAgents(builder.Configuration);
 
+// Application Insights — chỉ register khi có connection string (Phase 6 Azure deploy)
+if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+{
+    builder.Services.AddApplicationInsightsTelemetry();
+}
+
 // OpenAPI (.NET 10 native) + Scalar UI
 builder.Services.AddOpenApi();
 
