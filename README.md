@@ -134,7 +134,7 @@ curl -X POST http://localhost:5080/pipeline \
 ## Lộ trình
 
 - [x] Phase 1 — Solution skeleton, CI, README
-- [ ] Phase 2 — LLM Gateway (`ILlmClient` + 2 impls + factory)
+- [x] Phase 2 — LLM Gateway (`ILlmClient` + 2 impls + factory + Mock)
 - [ ] Phase 3 — Domain models + 5 agent interfaces
 - [ ] Phase 4 — `PipelineOrchestrator` + endpoints
 - [ ] Phase 5 — Unit tests + benchmark KC1–KC5
