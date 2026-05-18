@@ -1,0 +1,34 @@
+# .dockerignore — giảm context build, tránh leak local artifacts.
+
+**/bin/
+**/obj/
+**/out/
+**/publish/
+**/TestResults/
+**/coverage/
+**/.vs/
+**/.vscode/
+**/.idea/
+**/.git/
+**/.github/
+**/.claude/
+**/node_modules/
+**/Thumbs.db
+**/.DS_Store
+
+# Secret files — KHÔNG bao giờ vào image
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/secrets.json
+**/.env
+**/.env.*
+**/*.pfx
+**/*.key
+**/*.pem
+
+# Doc / IaC không cần trong image runtime
+docs/
+infra/
+tests/fixtures/
+Dockerfile
+.dockerignore

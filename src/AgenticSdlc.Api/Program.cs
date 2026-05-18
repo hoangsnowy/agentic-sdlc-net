@@ -1,6 +1,11 @@
 // AgenticSdlc.Api/Program.cs
-// Minimal API host (.NET 10). DI và endpoint sẽ được hoàn thiện ở các Phase tiếp theo.
+// Phase 4 — Compose: LLM Gateway + Agents + Pipeline endpoints + Scalar UI.
 
+using AgenticSdlc.Api.Endpoints;
+using AgenticSdlc.Infrastructure.Agents;
+using AgenticSdlc.Infrastructure.Llm;
+using AgenticSdlc.Infrastructure.Metrics;
+using AgenticSdlc.Infrastructure.Validation;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,11 +18,25 @@ builder.Logging.AddSimpleConsole(options =>
     options.TimestampFormat = "HH:mm:ss.fff ";
 });
 
-// (Phase 2) ServiceCollection extensions sẽ đăng ký:
-//   - LLM Gateway (ILlmClient, ClaudeClient, AzureOpenAiClient, ILlmClientFactory)
-//   - 5 agent (IRequirementAgent / ICodingAgent / ...)
-//   - PipelineOrchestrator
-// builder.Services.AddAgenticSdlcInfrastructure(builder.Configuration);
+// LLM Gateway + 5 Agents + PipelineOrchestrator + JSON Schema validation + Metrics
+builder.Services.AddLlmGateway(builder.Configuration);
+builder.Services.AddValidation();
+var csvPath = builder.Configuration["Metrics:CsvPath"];
+if (!string.IsNullOrWhiteSpace(csvPath))
+{
+    builder.Services.AddCsvMetrics(csvPath);
+}
+else
+{
+    builder.Services.AddInMemoryMetrics();
+}
+builder.Services.AddAgents(builder.Configuration);
+
+// Application Insights — chỉ register khi có connection string (Phase 6 Azure deploy)
+if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+{
+    builder.Services.AddApplicationInsightsTelemetry();
+}
 
 // OpenAPI (.NET 10 native) + Scalar UI
 builder.Services.AddOpenApi();
@@ -26,10 +45,7 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    // /openapi/v1.json — spec
     app.MapOpenApi();
-
-    // /scalar/v1 — UI hiện đại của Scalar
     app.MapScalarApiReference(options =>
     {
         options.WithTitle("Agentic SDLC API")
@@ -41,8 +57,8 @@ if (app.Environment.IsDevelopment())
 app.MapGet("/", () => Results.Ok(new
 {
     name = "agentic-sdlc-net",
-    version = "0.1.0-phase1",
-    status = "scaffold-ready"
+    version = "0.4.0-phase4",
+    status = "pipeline-ready"
 }))
    .WithName("Root")
    .WithSummary("Service identity")
@@ -53,7 +69,6 @@ app.MapGet("/health", () => Results.Ok(new { status = "Healthy", utc = DateTime.
    .WithSummary("Liveness probe")
    .WithTags("Meta");
 
-// (Phase 4) Pipeline endpoints sẽ được thêm tại đây:
-//   app.MapAgenticSdlcEndpoints();
+app.MapPipelineEndpoints();
 
 app.Run();

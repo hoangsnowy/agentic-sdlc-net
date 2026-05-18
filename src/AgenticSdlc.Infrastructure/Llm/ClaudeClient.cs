@@ -1,0 +1,228 @@
+// AgenticSdlc.Infrastructure/Llm/ClaudeClient.cs
+// Sprint 1 — Anthropic Messages API client (raw HttpClient, không SDK).
+
+using System;
+using System.Diagnostics;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
+using AgenticSdlc.Domain.Llm;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace AgenticSdlc.Infrastructure.Llm;
+
+/// <summary>
+/// Client gọi Anthropic Messages API tại <c>POST /v1/messages</c>.
+/// Authentication: header <c>x-api-key</c>; version: header <c>anthropic-version</c>.
+/// </summary>
+public sealed class ClaudeClient : ILlmClient
+{
+    /// <summary>Named HttpClient key dùng cho <see cref="IHttpClientFactory"/>.</summary>
+    public const string HttpClientName = "AgenticSdlc.ClaudeClient";
+
+    private readonly HttpClient _http;
+    private readonly ClaudeOptions _options;
+    private readonly ILogger<ClaudeClient> _logger;
+
+    /// <inheritdoc />
+    public string Provider => "Claude";
+
+    /// <summary>Khởi tạo client. <paramref name="http"/> nên được resolve qua <see cref="IHttpClientFactory"/>.</summary>
+    public ClaudeClient(HttpClient http, IOptions<LlmOptions> options, ILogger<ClaudeClient> logger)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        _http = http ?? throw new ArgumentNullException(nameof(http));
+        _options = options.Value?.Claude ?? new ClaudeOptions();
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        ConfigureHttpClient();
+    }
+
+    private void ConfigureHttpClient()
+    {
+        if (_http.BaseAddress is null && !string.IsNullOrWhiteSpace(_options.Endpoint))
+        {
+            _http.BaseAddress = new Uri(_options.Endpoint.TrimEnd('/') + "/");
+        }
+
+        // Timeout: ưu tiên giá trị đã set bên ngoài (qua AddHttpClient), fallback options.
+        if (_http.Timeout == TimeSpan.FromSeconds(100) /* default */ && _options.TimeoutSeconds > 0)
+        {
+            _http.Timeout = TimeSpan.FromSeconds(_options.TimeoutSeconds);
+        }
+
+        // Headers nên set 1 lần (idempotent — kiểm tra trước khi add để tránh duplicate khi reused client).
+        if (!_http.DefaultRequestHeaders.Contains("x-api-key") && !string.IsNullOrWhiteSpace(_options.ApiKey))
+        {
+            _http.DefaultRequestHeaders.Add("x-api-key", _options.ApiKey);
+        }
+
+        if (!_http.DefaultRequestHeaders.Contains("anthropic-version"))
+        {
+            _http.DefaultRequestHeaders.Add("anthropic-version", _options.ApiVersion);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<LlmResponse> SendAsync(LlmRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+
+        var stopwatch = Stopwatch.StartNew();
+
+        var payload = new ClaudeRequestDto
+        {
+            Model = request.Model,
+            MaxTokens = request.MaxTokens,
+            Temperature = request.Temperature,
+            System = string.IsNullOrEmpty(request.SystemPrompt) ? null : request.SystemPrompt,
+            Messages = new[]
+            {
+                new ClaudeMessageDto { Role = "user", Content = request.UserPrompt }
+            },
+        };
+
+        var dto = await RetryPolicy.ExecuteAsync(
+            async ct => await PostOnceAsync(payload, ct).ConfigureAwait(false),
+            maxRetries: _options.MaxRetries,
+            baseDelay: TimeSpan.FromSeconds(1),
+            logger: _logger,
+            providerName: Provider,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        stopwatch.Stop();
+
+        var content = ExtractText(dto);
+        var inputTokens = dto.Usage?.InputTokens ?? 0;
+        var outputTokens = dto.Usage?.OutputTokens ?? 0;
+        var cost = CostCalculator.Calculate(request.Model, inputTokens, outputTokens);
+
+        return new LlmResponse(
+            Content: content,
+            InputTokens: inputTokens,
+            OutputTokens: outputTokens,
+            CostUsd: cost,
+            Latency: stopwatch.Elapsed,
+            Model: dto.Model ?? request.Model,
+            Provider: Provider);
+    }
+
+    /// <summary>1 lần POST. Ném <see cref="TransientHttpException"/> nếu 429/5xx, <see cref="LlmException"/> nếu 4xx khác hoặc malformed.</summary>
+    private async Task<ClaudeResponseDto> PostOnceAsync(ClaudeRequestDto payload, CancellationToken ct)
+    {
+        using var response = await _http.PostAsJsonAsync("v1/messages", payload, JsonOpts, ct).ConfigureAwait(false);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var statusCode = (int)response.StatusCode;
+            var body = await SafeReadAsync(response, ct).ConfigureAwait(false);
+
+            if (RetryPolicy.IsRetriableStatus(response.StatusCode))
+            {
+                throw new TransientHttpException(statusCode, $"Claude API returned {statusCode}: {body}");
+            }
+
+            throw new LlmException(
+                $"Claude API returned non-retriable {statusCode}: {body}",
+                Provider,
+                statusCode);
+        }
+
+        ClaudeResponseDto? dto;
+        try
+        {
+            dto = await response.Content.ReadFromJsonAsync<ClaudeResponseDto>(JsonOpts, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            throw new LlmException("Claude API returned malformed JSON.", Provider, innerException: ex);
+        }
+
+        if (dto is null)
+        {
+            throw new LlmException("Claude API returned null body.", Provider);
+        }
+
+        return dto;
+    }
+
+    private static async Task<string> SafeReadAsync(HttpResponseMessage resp, CancellationToken ct)
+    {
+        try
+        {
+            return await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            return "<unreadable>";
+        }
+    }
+
+    private static string ExtractText(ClaudeResponseDto dto)
+    {
+        if (dto.Content is null || dto.Content.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        // Anthropic trả về array of content blocks; chỉ lấy type="text".
+        var parts = new System.Text.StringBuilder();
+        foreach (var block in dto.Content)
+        {
+            if (block.Type == "text" && !string.IsNullOrEmpty(block.Text))
+            {
+                parts.Append(block.Text);
+            }
+        }
+        return parts.ToString();
+    }
+
+    private static readonly JsonSerializerOptions JsonOpts = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        WriteIndented = false,
+    };
+
+    // ----- DTOs (internal, shape khớp Anthropic API) -----
+
+    private sealed class ClaudeRequestDto
+    {
+        [JsonPropertyName("model")] public string Model { get; set; } = string.Empty;
+        [JsonPropertyName("max_tokens")] public int MaxTokens { get; set; }
+        [JsonPropertyName("temperature")] public double Temperature { get; set; }
+        [JsonPropertyName("system")] public string? System { get; set; }
+        [JsonPropertyName("messages")] public ClaudeMessageDto[] Messages { get; set; } = [];
+    }
+
+    private sealed class ClaudeMessageDto
+    {
+        [JsonPropertyName("role")] public string Role { get; set; } = "user";
+        [JsonPropertyName("content")] public string Content { get; set; } = string.Empty;
+    }
+
+    private sealed class ClaudeResponseDto
+    {
+        [JsonPropertyName("id")] public string? Id { get; set; }
+        [JsonPropertyName("model")] public string? Model { get; set; }
+        [JsonPropertyName("content")] public ClaudeContentBlockDto[]? Content { get; set; }
+        [JsonPropertyName("usage")] public ClaudeUsageDto? Usage { get; set; }
+    }
+
+    private sealed class ClaudeContentBlockDto
+    {
+        [JsonPropertyName("type")] public string Type { get; set; } = "text";
+        [JsonPropertyName("text")] public string? Text { get; set; }
+    }
+
+    private sealed class ClaudeUsageDto
+    {
+        [JsonPropertyName("input_tokens")] public int InputTokens { get; set; }
+        [JsonPropertyName("output_tokens")] public int OutputTokens { get; set; }
+    }
+}
