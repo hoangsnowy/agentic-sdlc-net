@@ -56,6 +56,9 @@ param minReplicas int = 0
 @maxValue(30)
 param maxReplicas int = 3
 
+@description('Tạo role assignment (AcrPull + KeyVaultSecretsUser cho UAMI). Cần quyền Owner/User Access Administrator. CI chỉ có Contributor → truyền false; bootstrap role 1 lần bằng deploy thủ công.')
+param deployRoleAssignments bool = true
+
 // ---- Names (deterministic) ----
 
 var suffix = uniqueString(resourceGroup().id, appName, environmentName)
@@ -112,7 +115,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
 }
 
 // Cho identity quyền AcrPull
-resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployRoleAssignments) {
   name: guid(acr.id, identity.id, 'AcrPull')
   scope: acr
   properties: {
@@ -141,7 +144,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
 }
 
 // Cho identity quyền đọc secret
-resource kvSecretsUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource kvSecretsUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployRoleAssignments) {
   name: guid(keyVault.id, identity.id, 'KeyVaultSecretsUser')
   scope: keyVault
   properties: {
