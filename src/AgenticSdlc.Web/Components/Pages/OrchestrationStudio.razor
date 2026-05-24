@@ -14,6 +14,7 @@
 @inject OrchestrationStore Store
 @inject ILlmClientFactory LlmFactory
 @inject DemoRunContext DemoCtx
+@inject Microsoft.JSInterop.IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>Orchestrations — Agentic SDLC</PageTitle>
@@ -42,7 +43,12 @@
                 <h1>Orchestrations</h1>
                 <p>Design multi-agent workflows with visual canvas</p>
             </div>
-            <a class="syn-close" href="/timeline" title="View legacy timeline">✕</a>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button class="syn-theme-toggle" @onclick="ToggleTheme" title="Toggle light/dark theme">
+                    @(_theme == "light" ? "🌙 Dark" : "☀ Light")
+                </button>
+                <a class="syn-close" href="/timeline" title="View legacy timeline">✕</a>
+            </div>
         </div>
 
         <!-- toolbar -->
@@ -218,6 +224,20 @@
         }
         BuildDiagram();
     }
+
+    private string _theme = "dark";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _theme = await JS.InvokeAsync<string>("agenticTheme.get");
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleTheme()
+        => _theme = await JS.InvokeAsync<string>("agenticTheme.toggle");
 
     private void BuildDiagram()
     {
