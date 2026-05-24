@@ -59,6 +59,16 @@ param maxReplicas int = 3
 @description('Tạo role assignment (AcrPull + KeyVaultSecretsUser cho UAMI). Cần quyền Owner/User Access Administrator. CI chỉ có Contributor → truyền false; bootstrap role 1 lần bằng deploy thủ công.')
 param deployRoleAssignments bool = true
 
+@description('Provision Azure Database for PostgreSQL flexible server + wire connection string vào Container App. Default false (tránh phát sinh cost ~$13/tháng). Bật → bắt buộc postgresAdminPassword.')
+param deployPostgres bool = false
+
+@description('Postgres admin login (chỉ dùng khi deployPostgres=true).')
+param postgresAdminLogin string = 'pgadmin'
+
+@description('Postgres admin password (@secure). Bắt buộc khi deployPostgres=true.')
+@secure()
+param postgresAdminPassword string = ''
+
 // ---- Names (deterministic) ----
 
 var suffix = uniqueString(resourceGroup().id, appName, environmentName)
@@ -69,6 +79,8 @@ var caeName = '${appName}-cae-${environmentName}'
 var caName = '${appName}-${environmentName}'
 var kvName = toLower('${appName}-kv-${take(suffix, 8)}')
 var idName = '${appName}-id-${environmentName}'
+var pgServerName = toLower('${appName}-pg-${take(suffix, 8)}')
+var pgDatabaseName = 'agentic_sdlc'
 
 // ---- User-Assigned Managed Identity ----
 
@@ -155,6 +167,47 @@ resource kvSecretsUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' 
   }
 }
 
+// ---- Postgres flexible server (tuỳ chọn, persistence layer) ----
+
+resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = if (deployPostgres) {
+  name: pgServerName
+  location: location
+  sku: {
+    name: 'Standard_B1ms'
+    tier: 'Burstable'
+  }
+  properties: {
+    version: '16'
+    administratorLogin: postgresAdminLogin
+    administratorLoginPassword: postgresAdminPassword
+    storage: {
+      storageSizeGB: 32
+    }
+    backup: {
+      backupRetentionDays: 7
+      geoRedundantBackup: 'Disabled'
+    }
+    highAvailability: {
+      mode: 'Disabled'
+    }
+  }
+}
+
+resource postgresDb 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2024-08-01' = if (deployPostgres) {
+  parent: postgres
+  name: pgDatabaseName
+}
+
+// Special rule start=end=0.0.0.0 ⇒ cho phép mọi Azure service (Container App) kết nối.
+resource postgresFirewallAzure 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2024-08-01' = if (deployPostgres) {
+  parent: postgres
+  name: 'AllowAllAzureServices'
+  properties: {
+    startIpAddress: '0.0.0.0'
+    endIpAddress: '0.0.0.0'
+  }
+}
+
 // ---- Container Apps Environment ----
 
 resource cae 'Microsoft.App/managedEnvironments@2024-03-01' = {
@@ -209,12 +262,19 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           identity: identity.id
         }
       ]
-      secrets: [
+      secrets: concat([
         {
           name: 'appinsights-connection-string'
           value: appInsights.properties.ConnectionString
         }
-      ]
+      ], deployPostgres ? [
+        {
+          name: 'db-connection'
+          // postgres chỉ deploy khi deployPostgres=true — cùng điều kiện với nhánh này.
+          #disable-next-line BCP318
+          value: 'Host=${postgres.properties.fullyQualifiedDomainName};Port=5432;Database=${pgDatabaseName};Username=${postgresAdminLogin};Password=${postgresAdminPassword};SSL Mode=Require;Trust Server Certificate=true'
+        }
+      ] : [])
     }
     template: {
       containers: [
@@ -225,7 +285,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json(cpu)
             memory: memory
           }
-          env: [
+          env: concat([
             {
               name: 'ASPNETCORE_ENVIRONMENT'
               value: environmentName == 'prod' ? 'Production' : 'Staging'
@@ -242,7 +302,12 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
               name: 'KeyVault__Endpoint'
               value: keyVault.properties.vaultUri
             }
-          ]
+          ], deployPostgres ? [
+            {
+              name: 'ConnectionStrings__DefaultConnection'
+              secretRef: 'db-connection'
+            }
+          ] : [])
           probes: [
             {
               type: 'Liveness'
@@ -291,3 +356,5 @@ output keyVaultUri string = keyVault.properties.vaultUri
 output identityClientId string = identity.properties.clientId
 output identityPrincipalId string = identity.properties.principalId
 output appInsightsConnectionString string = appInsights.properties.ConnectionString
+#disable-next-line BCP318
+output postgresFqdn string = deployPostgres ? postgres.properties.fullyQualifiedDomainName : ''

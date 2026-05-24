@@ -54,6 +54,41 @@ az containerapp revision restart --name agenticsdlc-dev --resource-group rg-Hoan
 Sau khi setup OIDC federated credential (xem `.github/workflows/deploy.yml`),
 mỗi push lên `main` tự build + push image + update Container App revision.
 
+## Persistence (Postgres) — tuỳ chọn
+
+App lưu pipeline run + metrics + Agent Studio state vào Postgres qua EF Core.
+Không có `ConnectionStrings:DefaultConnection` → app chạy stateless (no-op repos).
+
+**Local dev:**
+
+```bash
+docker compose up -d          # Postgres 16 tại localhost:5432
+# set connection string cho Api + Web:
+cd src/AgenticSdlc.Api && dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
+  "Host=localhost;Port=5432;Database=agentic_sdlc;Username=postgres;Password=postgres"
+```
+
+Migration tự apply lúc app khởi động (`Database.Migrate()`). Sinh migration mới:
+
+```bash
+dotnet ef migrations add <Name> \
+  --project src/AgenticSdlc.Infrastructure --startup-project src/AgenticSdlc.Infrastructure \
+  --output-dir Persistence/Migrations
+```
+
+**Azure (bật Postgres flexible server ~$13/tháng):** deploy với `deployPostgres=true`:
+
+```bash
+az deployment group create -g rg-Hoang-LuanVan --template-file infra/main.bicep \
+  --parameters infra/main.parameters.json \
+  --parameters containerImage=<acr>/agenticsdlc:<tag> deployPostgres=true \
+               postgresAdminPassword='<mật-khẩu-mạnh>'
+```
+
+Bicep tự tạo server + DB + firewall (allow Azure services) + inject
+`ConnectionStrings__DefaultConnection` làm Container App secret. Mặc định
+`deployPostgres=false` để workflow CI không phát sinh cost ngoài ý muốn.
+
 ## Cleanup
 
 ```bash
