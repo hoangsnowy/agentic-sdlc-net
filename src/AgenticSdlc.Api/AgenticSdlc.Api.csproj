@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AgenticSdlc.Infrastructure\AgenticSdlc.Infrastructure.csproj" />
+    <ProjectReference Include="..\AgenticSdlc.ServiceDefaults\AgenticSdlc.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>

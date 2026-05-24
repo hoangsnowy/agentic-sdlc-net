@@ -7,9 +7,13 @@ using AgenticSdlc.Infrastructure.Llm;
 using AgenticSdlc.Infrastructure.Metrics;
 using AgenticSdlc.Infrastructure.Persistence;
 using AgenticSdlc.Infrastructure.Validation;
+using AgenticSdlc.ServiceDefaults;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Aspire service defaults: OpenTelemetry, health checks, service discovery, HTTP resilience.
+builder.AddServiceDefaults();
 
 // Logging
 builder.Logging.AddSimpleConsole(options =>

@@ -44,5 +44,22 @@
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+
+    <!-- Aspire orchestration + service defaults (.NET 10) -->
+    <PackageVersion Include="Aspire.Hosting" Version="13.3.2" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.3.2" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.3.2" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.3.2" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.6.0" />
+
+    <!-- OpenTelemetry (instrumentation pinned to 1.15.x line) -->
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
+
+    <!-- E2E (browser) -->
+    <PackageVersion Include="Microsoft.Playwright" Version="1.49.0" />
   </ItemGroup>
 </Project>
