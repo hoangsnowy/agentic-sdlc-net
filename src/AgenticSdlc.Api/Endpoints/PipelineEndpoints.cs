@@ -4,6 +4,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using AgenticSdlc.Application.Agents;
+using AgenticSdlc.Application.Persistence;
 using AgenticSdlc.Domain.Code;
 using AgenticSdlc.Domain.Pipeline;
 using AgenticSdlc.Domain.Qa;
@@ -65,6 +66,26 @@ public static class PipelineEndpoints
         .WithName("Pipeline")
         .WithSummary("KC4 — Pipeline end-to-end với QA loop (≤ NMax iteration)")
         .WithTags("Agents");
+
+        app.MapGet("/runs", async (IPipelineRunRepository repo, CancellationToken ct) =>
+        {
+            var runs = await repo.ListAsync(50, ct).ConfigureAwait(false);
+            return Microsoft.AspNetCore.Http.Results.Ok(runs);
+        })
+        .WithName("Runs")
+        .WithSummary("Lịch sử pipeline run gần nhất (summary)")
+        .WithTags("History");
+
+        app.MapGet("/runs/{id:guid}", async (Guid id, IPipelineRunRepository repo, CancellationToken ct) =>
+        {
+            var run = await repo.GetAsync(id, ct).ConfigureAwait(false);
+            return run is null
+                ? Microsoft.AspNetCore.Http.Results.NotFound()
+                : Microsoft.AspNetCore.Http.Results.Ok(run);
+        })
+        .WithName("RunById")
+        .WithSummary("Chi tiết 1 pipeline run (full artifact + metrics)")
+        .WithTags("History");
 
         return app;
     }

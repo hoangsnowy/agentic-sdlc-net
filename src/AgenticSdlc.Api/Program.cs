@@ -5,6 +5,7 @@ using AgenticSdlc.Api.Endpoints;
 using AgenticSdlc.Infrastructure.Agents;
 using AgenticSdlc.Infrastructure.Llm;
 using AgenticSdlc.Infrastructure.Metrics;
+using AgenticSdlc.Infrastructure.Persistence;
 using AgenticSdlc.Infrastructure.Validation;
 using Scalar.AspNetCore;
 
@@ -32,6 +33,9 @@ else
 }
 builder.Services.AddAgents(builder.Configuration);
 
+// Persistence (Postgres). Không có ConnectionStrings:DefaultConnection → no-op repos.
+builder.Services.AddPersistence(builder.Configuration);
+
 // Application Insights — chỉ register khi có connection string (Phase 6 Azure deploy)
 if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
 {
@@ -42,6 +46,9 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNEC
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+// Apply EF migration lúc startup (no-op nếu chưa cấu hình DB).
+await app.Services.InitializePersistenceAsync();
 
 // Bật OpenAPI + Scalar UI ở mọi env trừ Production (deploy dev chạy env Staging).
 if (!app.Environment.IsProduction())

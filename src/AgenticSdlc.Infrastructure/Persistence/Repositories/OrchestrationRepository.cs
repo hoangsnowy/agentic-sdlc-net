@@ -1,0 +1,60 @@
+// EF Core impl cho Agent Studio orchestration CRUD.
+using AgenticSdlc.Application.Persistence;
+using AgenticSdlc.Infrastructure.Persistence.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace AgenticSdlc.Infrastructure.Persistence.Repositories;
+
+internal sealed class OrchestrationRepository(AgenticSdlcDbContext db) : IOrchestrationRepository
+{
+    public async Task<IReadOnlyList<OrchestrationRecord>> ListAsync(CancellationToken ct = default)
+    {
+        return await db.Orchestrations
+            .AsNoTracking()
+            .OrderBy(x => x.Name)
+            .Select(x => new OrchestrationRecord(x.Id, x.Name, x.Description, x.DefinitionJson, x.UpdatedAtUtc))
+            .ToListAsync(ct);
+    }
+
+    public async Task<OrchestrationRecord?> GetAsync(string id, CancellationToken ct = default)
+    {
+        var e = await db.Orchestrations.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        return e is null ? null : new OrchestrationRecord(e.Id, e.Name, e.Description, e.DefinitionJson, e.UpdatedAtUtc);
+    }
+
+    public async Task UpsertAsync(OrchestrationRecord record, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(record);
+        var existing = await db.Orchestrations.FirstOrDefaultAsync(x => x.Id == record.Id, ct);
+        if (existing is null)
+        {
+            db.Orchestrations.Add(new OrchestrationEntity
+            {
+                Id = record.Id,
+                Name = record.Name,
+                Description = record.Description,
+                DefinitionJson = record.DefinitionJson,
+                UpdatedAtUtc = record.UpdatedAtUtc,
+            });
+        }
+        else
+        {
+            existing.Name = record.Name;
+            existing.Description = record.Description;
+            existing.DefinitionJson = record.DefinitionJson;
+            existing.UpdatedAtUtc = record.UpdatedAtUtc;
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(string id, CancellationToken ct = default)
+    {
+        var e = await db.Orchestrations.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (e is not null)
+        {
+            db.Orchestrations.Remove(e);
+            await db.SaveChangesAsync(ct);
+        }
+    }
+}
