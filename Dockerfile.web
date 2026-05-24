@@ -7,7 +7,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy csproj + restore (cache layer) — only the Web graph: Web → Infrastructure → Application → Domain.
-COPY global.json Directory.Build.props ./
+COPY global.json Directory.Build.props Directory.Packages.props ./
 COPY AgenticSdlc.sln ./
 COPY src/AgenticSdlc.Domain/AgenticSdlc.Domain.csproj            src/AgenticSdlc.Domain/
 COPY src/AgenticSdlc.Application/AgenticSdlc.Application.csproj  src/AgenticSdlc.Application/

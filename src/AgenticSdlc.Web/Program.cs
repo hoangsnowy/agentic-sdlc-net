@@ -61,12 +61,14 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
 
-app.UseStaticFiles();
 app.UseAntiforgery();
 
 // Liveness/readiness probe for Container Apps.
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", utc = DateTime.UtcNow }));
 
+// .NET 9/10 static asset delivery — serves wwwroot + _framework/blazor.web.js in
+// published/container mode (UseStaticFiles alone 404s the framework script when published).
+app.MapStaticAssets();
 app.MapRazorComponents<App>()
    .AddInteractiveServerRenderMode();
 
