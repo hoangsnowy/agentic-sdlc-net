@@ -2,12 +2,15 @@
 // Phase 4 — Đăng ký 5 agent + PipelineOrchestrator + AgentsOptions + PipelineOptions vào DI.
 
 using AgenticSdlc.Application.Agents;
+using AgenticSdlc.Application.Metrics;
+using AgenticSdlc.Application.Persistence;
 using AgenticSdlc.Application.Pipeline;
 using AgenticSdlc.Infrastructure.Orchestration;
 using AgenticSdlc.Infrastructure.Pipeline;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace AgenticSdlc.Infrastructure.Agents;
 
@@ -37,7 +40,17 @@ public static class AgentsServiceCollectionExtensions
         services.AddTransient<ICodingAgent, CodingAgent>();
         services.AddTransient<ITestingAgent, TestingAgent>();
         services.AddTransient<IQaAgent, QaAgent>();
-        services.AddTransient<IOrchestratorAgent, PipelineOrchestrator>();
+
+        // IOrchestratorAgent = PersistingOrchestratorAgent bọc PipelineOrchestrator.
+        // Lưu run + metrics best-effort (no-op nếu chưa cấu hình DB qua AddPersistence).
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddTransient<PipelineOrchestrator>();
+        services.AddTransient<IOrchestratorAgent>(sp => new PersistingOrchestratorAgent(
+            sp.GetRequiredService<PipelineOrchestrator>(),
+            sp.GetRequiredService<IPipelineRunRepository>(),
+            sp.GetRequiredService<IMetricsCollector>(),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<ILogger<PersistingOrchestratorAgent>>()));
 
         // Mặc định no-op — host cần realtime (Blazor) override bằng đăng ký scoped sau AddAgents.
         services.TryAddSingleton<IPipelineProgressSink>(NullPipelineProgressSink.Instance);

@@ -10,6 +10,20 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Cho phép test project truy cập internal DbContext / repository / entity. -->
+    <InternalsVisibleTo Include="AgenticSdlc.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- System.Security.Cryptography.Xml (NU1903) đến TRANSITIVE từ Microsoft.EntityFrameworkCore.Design
+         → Microsoft.Build.Tasks.Core (MSBuild). Đây là dependency design-time/build-time (sinh EF migration),
+         PrivateAssets=all nên KHÔNG vào runtime app deploy → không reachable. Chưa có bản vá (cả 10.0.0 bị flag).
+         Suppress 2 advisory này, giữ audit cho phần còn lại. Gỡ khi có bản vá. -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-37gx-xxp4-5rgx" />
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-w3x6-4m5h-cxqf" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- LLM SDKs -->
     <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageReference Include="Azure.Identity" Version="1.14.0" />
@@ -21,6 +35,13 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+
+    <!-- Persistence: EF Core + Npgsql (Postgres) -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
 
     <!-- System.Text.Json: đã có sẵn trong .NET 10 framework (tránh NU1510) -->
   </ItemGroup>
