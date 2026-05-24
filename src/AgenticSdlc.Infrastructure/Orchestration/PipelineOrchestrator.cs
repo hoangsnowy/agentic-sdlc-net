@@ -13,6 +13,7 @@ using AgenticSdlc.Domain.Pipeline;
 using AgenticSdlc.Domain.Qa;
 using AgenticSdlc.Domain.Requirements;
 using AgenticSdlc.Domain.Testing;
+using AgenticSdlc.Infrastructure.Pipeline;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -34,15 +35,27 @@ public sealed class PipelineOrchestrator : IOrchestratorAgent
     private readonly IQaAgent _qa;
     private readonly PipelineOptions _options;
     private readonly ILogger<PipelineOrchestrator> _logger;
+    private readonly IPipelineProgressSink _progress;
 
     /// <summary>Khởi tạo.</summary>
+    /// <param name="requirement">Requirement Agent (KC1).</param>
+    /// <param name="coding">Coding Agent (KC2).</param>
+    /// <param name="testing">Testing Agent (KC3).</param>
+    /// <param name="qa">QA Agent (KC5).</param>
+    /// <param name="options">Cấu hình pipeline.</param>
+    /// <param name="logger">Logger.</param>
+    /// <param name="progress">
+    /// Cổng phát tiến trình realtime — tham số tuỳ chọn để không phá vỡ call-site cũ.
+    /// <c>null</c> ⇒ dùng <see cref="NullPipelineProgressSink"/> (no-op).
+    /// </param>
     public PipelineOrchestrator(
         IRequirementAgent requirement,
         ICodingAgent coding,
         ITestingAgent testing,
         IQaAgent qa,
         IOptions<PipelineOptions> options,
-        ILogger<PipelineOrchestrator> logger)
+        ILogger<PipelineOrchestrator> logger,
+        IPipelineProgressSink? progress = null)
     {
         System.ArgumentNullException.ThrowIfNull(options);
         _requirement = requirement ?? throw new System.ArgumentNullException(nameof(requirement));
@@ -51,6 +64,7 @@ public sealed class PipelineOrchestrator : IOrchestratorAgent
         _qa = qa ?? throw new System.ArgumentNullException(nameof(qa));
         _options = options.Value;
         _logger = logger ?? throw new System.ArgumentNullException(nameof(logger));
+        _progress = progress ?? NullPipelineProgressSink.Instance;
     }
 
     /// <inheritdoc />
@@ -64,7 +78,10 @@ public sealed class PipelineOrchestrator : IOrchestratorAgent
             "Pipeline start: story={Title}, maxIter={Max}",
             Truncate(story.Description, 60), maxIterations);
 
+        // KC1 — Requirement Agent.
         RequirementSpec spec;
+        await ReportStartAsync(PipelineStage.Requirement, 0, maxIterations,
+            "Phân tích user story → requirement spec", cancellationToken).ConfigureAwait(false);
         try
         {
             spec = await _requirement.RunAsync(story, cancellationToken).ConfigureAwait(false);
@@ -72,8 +89,13 @@ public sealed class PipelineOrchestrator : IOrchestratorAgent
         catch (LlmException ex)
         {
             _logger.LogError(ex, "RequirementAgent failed — pipeline abort.");
+            await ReportFailedAsync(PipelineStage.Requirement, 0, maxIterations, ex.Message, cancellationToken).ConfigureAwait(false);
             return FailEarly(story, ex);
         }
+
+        await ReportDoneAsync(PipelineStage.Requirement, 0, maxIterations,
+            $"Spec: {spec.Title} ({spec.FunctionalRequirements.Count} FR, {spec.Entities.Count} entity)",
+            spec.Metrics, cancellationToken).ConfigureAwait(false);
 
         var qaHistory = new List<QaReport>(maxIterations);
         CodeArtifact? code = null;
@@ -86,15 +108,34 @@ public sealed class PipelineOrchestrator : IOrchestratorAgent
             cancellationToken.ThrowIfCancellationRequested();
             _logger.LogInformation("Iteration {N}/{Max} start", iter, maxIterations);
 
+            var stage = PipelineStage.Coding;
             try
             {
+                // KC2 — Coding Agent.
+                await ReportStartAsync(PipelineStage.Coding, iter, maxIterations,
+                    iter == 1 ? "Sinh source code từ spec" : "Tái sinh code theo feedback QA", cancellationToken).ConfigureAwait(false);
                 code = await _coding.RunAsync(spec, lastQa, cancellationToken).ConfigureAwait(false);
+                await ReportDoneAsync(PipelineStage.Coding, iter, maxIterations,
+                    $"{code.Files.Count} file ({code.Architecture})", code.Metrics, cancellationToken).ConfigureAwait(false);
+
+                // KC3 — Testing Agent.
+                stage = PipelineStage.Testing;
+                await ReportStartAsync(PipelineStage.Testing, iter, maxIterations,
+                    "Sinh test case (happy / edge / error)", cancellationToken).ConfigureAwait(false);
                 tests = await _testing.RunAsync(spec, code, lastQa, cancellationToken).ConfigureAwait(false);
+                await ReportDoneAsync(PipelineStage.Testing, iter, maxIterations,
+                    $"{tests.TotalCount} test (cov ~{tests.EstimatedCoveragePercent}%)", tests.Metrics, cancellationToken).ConfigureAwait(false);
+
+                // KC5 — QA Agent.
+                stage = PipelineStage.Qa;
+                await ReportStartAsync(PipelineStage.Qa, iter, maxIterations,
+                    "Đánh giá nhất quán requirement-code-test", cancellationToken).ConfigureAwait(false);
                 lastQa = await _qa.RunAsync(spec, code, tests, cancellationToken).ConfigureAwait(false);
             }
             catch (LlmException ex)
             {
                 _logger.LogError(ex, "Iteration {N} failed.", iter);
+                await ReportFailedAsync(stage, iter, maxIterations, ex.Message, cancellationToken).ConfigureAwait(false);
                 return FailMidway(story, spec, code, tests, qaHistory, ex);
             }
 
@@ -102,6 +143,20 @@ public sealed class PipelineOrchestrator : IOrchestratorAgent
             _logger.LogInformation(
                 "Iteration {N} QA: score={Score} consistent={Consistent}",
                 iter, lastQa.Score, lastQa.IsConsistent);
+
+            await _progress.ReportAsync(
+                new PipelineProgressEvent(
+                    Stage: PipelineStage.Qa,
+                    Phase: PipelinePhase.Completed,
+                    Iteration: iter,
+                    MaxIterations: maxIterations,
+                    Message: lastQa.IsConsistent
+                        ? $"QA pass (score {lastQa.Score:0.00}) — thoát loop"
+                        : $"QA chưa đạt (score {lastQa.Score:0.00}, {lastQa.Issues.Count} vấn đề)",
+                    QaScore: lastQa.Score,
+                    QaConsistent: lastQa.IsConsistent,
+                    Metrics: lastQa.Metrics),
+                cancellationToken).ConfigureAwait(false);
 
             if (lastQa.IsConsistent)
             {
@@ -112,6 +167,12 @@ public sealed class PipelineOrchestrator : IOrchestratorAgent
 
         var total = Aggregate(spec.Metrics, code?.Metrics, tests?.Metrics, qaHistory);
 
+        await ReportDoneAsync(PipelineStage.Aggregate, qaHistory.Count, maxIterations,
+            status == PipelineStatus.Done
+                ? $"Hoàn tất sau {qaHistory.Count} vòng — QA pass"
+                : $"Chạm giới hạn {maxIterations} vòng — QA chưa đạt",
+            total, cancellationToken).ConfigureAwait(false);
+
         return new PipelineResult(
             UserStory: story,
             Spec: spec,
@@ -121,6 +182,18 @@ public sealed class PipelineOrchestrator : IOrchestratorAgent
             Status: status,
             TotalMetrics: total);
     }
+
+    private ValueTask ReportStartAsync(PipelineStage stage, int iteration, int maxIterations, string message, CancellationToken ct)
+        => _progress.ReportAsync(
+            new PipelineProgressEvent(stage, PipelinePhase.Started, iteration, maxIterations, message), ct);
+
+    private ValueTask ReportDoneAsync(PipelineStage stage, int iteration, int maxIterations, string message, AgentMetrics metrics, CancellationToken ct)
+        => _progress.ReportAsync(
+            new PipelineProgressEvent(stage, PipelinePhase.Completed, iteration, maxIterations, message, Metrics: metrics), ct);
+
+    private ValueTask ReportFailedAsync(PipelineStage stage, int iteration, int maxIterations, string message, CancellationToken ct)
+        => _progress.ReportAsync(
+            new PipelineProgressEvent(stage, PipelinePhase.Failed, iteration, maxIterations, message), ct);
 
     private static AgentMetrics Aggregate(AgentMetrics spec, AgentMetrics? code, AgentMetrics? tests, IReadOnlyList<QaReport> qaHistory)
     {

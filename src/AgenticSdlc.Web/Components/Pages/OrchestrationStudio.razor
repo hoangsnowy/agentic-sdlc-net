@@ -1,0 +1,644 @@
+@page "/"
+@layout StudioLayout
+@using System.Linq
+@using AgenticSdlc.Web.Orchestrations
+@using Blazor.Diagrams.Core.Geometry
+@using Blazor.Diagrams.Core.Models
+@using Blazor.Diagrams.Core.Anchors
+@using Blazor.Diagrams.Core.Routers
+@using Blazor.Diagrams.Core.PathGenerators
+@using Blazor.Diagrams.Options
+@using AgenticSdlc.Domain.Llm
+@using AgenticSdlc.Infrastructure.Llm
+@using AgenticSdlc.Web.Services.Demo
+@inject OrchestrationStore Store
+@inject ILlmClientFactory LlmFactory
+@inject DemoRunContext DemoCtx
+@implements IDisposable
+
+<PageTitle>Orchestrations — Agentic SDLC</PageTitle>
+
+<div class="syn-root">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="syn-sidebar">
+        <div class="syn-logo"><span class="g">⚙</span> SETTINGS</div>
+        <nav class="syn-nav">
+            @foreach (var item in NavItems)
+            {
+                <div class="syn-nav-item @(item == "Orchestrations" ? "active" : "")">
+                    <span class="ic">@NavIcon(item)</span> @item
+                </div>
+            }
+        </nav>
+        <div class="syn-version">Agent Studio v1.0</div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <div class="syn-main">
+
+        <div class="syn-topbar">
+            <div>
+                <h1>Orchestrations</h1>
+                <p>Design multi-agent workflows with visual canvas</p>
+            </div>
+            <a class="syn-close" href="/timeline" title="Xem timeline cũ">✕</a>
+        </div>
+
+        <!-- toolbar -->
+        <div class="syn-toolbar">
+            <select class="syn-select" value="@_graph.Id" @onchange="OnSelectGraph">
+                @foreach (var g in _all)
+                {
+                    <option value="@g.Id">@g.Name</option>
+                }
+            </select>
+            <button class="syn-btn" @onclick="NewGraph">+ New</button>
+            <button class="syn-btn purple" @onclick="@(() => {})" disabled>🪄 Build with AI</button>
+
+            <div class="syn-spacer"></div>
+
+            <button class="syn-btn" @onclick="Save">💾 Save</button>
+            <button class="syn-btn green" @onclick="Run" disabled="@_running">▶ @(_running ? "Running…" : "Run")</button>
+            <button class="syn-btn purple" disabled>Deploy as Agent</button>
+            <button class="syn-btn" @onclick="Duplicate">Duplicate</button>
+            <button class="syn-btn ghost" @onclick="DeleteGraph">🗑 Delete</button>
+        </div>
+
+        <!-- name + desc -->
+        <div class="syn-namerow">
+            <input class="syn-name" @bind="_graph.Name" @bind:event="oninput" />
+            <input class="syn-desc" @bind="_graph.Description" @bind:event="oninput" placeholder="Mô tả orchestration…" />
+        </div>
+
+        <!-- add step palette -->
+        <div class="syn-palette">
+            <span class="lbl">Add step:</span>
+            @foreach (var st in PaletteOrder)
+            {
+                <button class="syn-step" @onclick="@(() => AddNode(st))">@StepIcon(st) @StepName(st)</button>
+            }
+        </div>
+
+        <!-- canvas -->
+        <div class="syn-canvas">
+            <CascadingValue Value="_diagram" IsFixed="false">
+                <DiagramCanvas @key="_graph.Id">
+                    <Widgets>
+                        <GridWidget Size="26" Mode="GridMode.Point" BackgroundColor="#0c0f14" />
+                        <SelectionBoxWidget />
+                        <NavigatorWidget Width="190" Height="120"
+                                         ViewStrokeColor="#5cc8ff" NodeColor="#2bd4a6"
+                                         Class="syn-navigator" Style="position:absolute; bottom:14px; right:14px;" />
+                    </Widgets>
+                </DiagramCanvas>
+            </CascadingValue>
+
+            <div class="syn-zoom">
+                <button @onclick="@(() => _diagram.SetZoom(Math.Min(2.0, _diagram.Zoom * 1.2)))">+</button>
+                <button @onclick="@(() => _diagram.SetZoom(Math.Max(0.2, _diagram.Zoom * 0.83)))">−</button>
+                <button @onclick="@(() => _diagram.ZoomToFit(60))" title="Fit">⛶</button>
+            </div>
+
+            @if (_selected is not null)
+            {
+                <div class="syn-inspector">
+                    <div class="ins-head">
+                        <span>@StepName(_selected.Data.Type) · node</span>
+                        <button class="ins-x" @onclick="CloseInspector">✕</button>
+                    </div>
+                    <label>Tiêu đề
+                        <input @bind="_selected.Data.Title" @bind:event="oninput" @bind:after="InspectorChanged" />
+                    </label>
+                    @if (_selected.Data.Type == StepType.Agent)
+                    {
+                        <label>Vai trò (Requirement / Coding / Testing / Qa)
+                            <input @bind="_selected.Data.AgentRole" @bind:event="oninput" @bind:after="InspectorChanged" />
+                        </label>
+                    }
+                    <label>Mô tả
+                        <textarea @bind="_selected.Data.Description" @bind:event="oninput" @bind:after="InspectorChanged"></textarea>
+                    </label>
+                    <div class="ins-row">
+                        <label>in:<input @bind="_selected.Data.Input" @bind:event="oninput" @bind:after="InspectorChanged" /></label>
+                        <label>out:<input @bind="_selected.Data.Output" @bind:event="oninput" @bind:after="InspectorChanged" /></label>
+                    </div>
+                    <div class="ins-row">
+                        <label>max iterations<input type="number" min="0" max="10" @bind="_selected.Data.MaxIterations" @bind:after="InspectorChanged" /></label>
+                    </div>
+                    @if (_selected.Data.Category == StepCategory.Evaluator)
+                    {
+                        <label>routes (cách nhau dấu phẩy)
+                            <input @bind="RoutesText" @bind:event="oninput" @bind:after="InspectorChanged" />
+                        </label>
+                    }
+                    <button class="ins-del" @onclick="DeleteSelectedNode">🗑 Xoá node</button>
+                </div>
+            }
+        </div>
+
+        <!-- bottom panel -->
+        <div class="syn-bottom">
+            <div class="syn-tabs">
+                <div class="syn-tab @(_bottomTab == 0 ? "active" : "")" @onclick="@(() => _bottomTab = 0)">State Schema</div>
+                <div class="syn-tab @(_bottomTab == 1 ? "active" : "")" @onclick="@(() => _bottomTab = 1)">Guardrails</div>
+                <div class="syn-tab @(_bottomTab == 2 ? "active" : "")" @onclick="@(() => _bottomTab = 2)">Run Log</div>
+                <div class="syn-tab @(_bottomTab == 3 ? "active" : "")" @onclick="@(() => _bottomTab = 3)">Recent Runs <span class="cnt">@_recentRuns</span></div>
+            </div>
+            <div class="syn-bottom-body">
+                @if (_bottomTab == 0)
+                {
+                    <textarea class="syn-code" @bind="_graph.StateSchemaJson" spellcheck="false"></textarea>
+                }
+                else if (_bottomTab == 1)
+                {
+                    @if (_graph.Guardrails.Count == 0)
+                    {
+                        <p class="muted">Chưa có guardrail.</p>
+                    }
+                    <ul class="syn-guard">@foreach (var g in _graph.Guardrails){<li>🛡 @g</li>}</ul>
+                }
+                else if (_bottomTab == 2)
+                {
+                    <div class="syn-runrow">
+                        <input class="syn-runinput" @bind="_runInput" placeholder="Initial input for the orchestration…" />
+                    </div>
+                    @if (_runLog.Count == 0)
+                    {
+                        <p class="muted">No run output yet. Click Run to start.</p>
+                    }
+                    else
+                    {
+                        <div class="syn-log">@foreach (var l in _runLog){<div class="ln">@l</div>}</div>
+                    }
+                }
+                else
+                {
+                    <p class="muted">@_recentRuns lần chạy gần đây (demo — chưa lưu lịch sử).</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<OrchestrationGraph> _all = [];
+    private OrchestrationGraph _graph = null!;
+    private BlazorDiagram _diagram = null!;
+    private readonly Dictionary<string, StepNodeModel> _nodeModels = new(StringComparer.Ordinal);
+    private StepNodeModel? _selected;
+
+    private int _bottomTab = 2;
+    private string _runInput = string.Empty;
+    private readonly List<string> _runLog = [];
+    private bool _running;
+    private int _recentRuns;
+
+    private static readonly string[] NavItems =
+    [
+        "General", "Personal Details", "Orchestrations", "Build Agents", "MCP Servers",
+        "Tool Builder", "Repos", "DB Configs", "Models", "Messaging", "Integrations",
+        "Schedules", "Vault", "Usage", "Import / Export", "Logs", "Memory", "API Keys", "Support & Docs",
+    ];
+
+    private static readonly StepType[] PaletteOrder =
+    [
+        StepType.Llm, StepType.Agent, StepType.Tool, StepType.Evaluator, StepType.Parallel,
+        StepType.Merge, StepType.Loop, StepType.Human, StepType.Transform, StepType.ExtractJson,
+        StepType.IfElse, StepType.Switch, StepType.Print, StepType.End,
+    ];
+
+    protected override void OnInitialized()
+    {
+        _all = Store.All().ToList();
+        _graph = _all.FirstOrDefault() ?? Store.Create("5-Agent SDLC Pipeline");
+        if (_all.Count == 0)
+        {
+            _all = Store.All().ToList();
+        }
+        BuildDiagram();
+    }
+
+    private void BuildDiagram()
+    {
+        _nodeModels.Clear();
+        var opts = new BlazorDiagramOptions
+        {
+            GridSize = 26,
+            AllowMultiSelection = true,
+            AllowPanning = true,
+            Zoom = { Enabled = true, Minimum = 0.2, Maximum = 2.0 },
+            Links =
+            {
+                DefaultRouter = new OrthogonalRouter(),
+                DefaultPathGenerator = new SmoothPathGenerator(),
+                DefaultColor = "#3b4a5e",
+                DefaultSelectedColor = "#5cc8ff",
+                RequireTarget = true,
+            },
+        };
+        _diagram = new BlazorDiagram(opts);
+        _diagram.RegisterComponent<StepNodeModel, StepNodeWidget>();
+
+        _selected = null;
+        foreach (var n in _graph.Nodes)
+        {
+            var m = new StepNodeModel(n);
+            m.RequestEdit = () => OpenInspector(m);
+            _diagram.Nodes.Add(m);
+            _nodeModels[n.Id] = m;
+        }
+        foreach (var e in _graph.Edges)
+        {
+            if (!_nodeModels.TryGetValue(e.SourceId, out var s) || !_nodeModels.TryGetValue(e.TargetId, out var t))
+            {
+                continue;
+            }
+            var (sp, tp) = PickPorts(s, t);
+            var link = new LinkModel(sp, tp);
+            if (!string.IsNullOrWhiteSpace(e.Label))
+            {
+                link.Labels.Add(new LinkLabelModel(link, e.Label, 0.5, new Point(0, -10)));
+            }
+            _diagram.Links.Add(link);
+        }
+    }
+
+    private static (PortModel source, PortModel target) PickPorts(StepNodeModel s, StepNodeModel t)
+        => t.Data.X >= s.Data.X
+            ? (s.GetPort(PortAlignment.Right)!, t.GetPort(PortAlignment.Left)!)
+            : (s.GetPort(PortAlignment.Bottom)!, t.GetPort(PortAlignment.Bottom)!);
+
+    private void OnSelectGraph(ChangeEventArgs e)
+    {
+        var id = e.Value?.ToString();
+        var g = id is null ? null : Store.Get(id);
+        if (g is not null)
+        {
+            _graph = g;
+            _runLog.Clear();
+            BuildDiagram();
+        }
+    }
+
+    private void NewGraph()
+    {
+        _graph = Store.Create();
+        _all = Store.All().ToList();
+        _runLog.Clear();
+        BuildDiagram();
+    }
+
+    private void AddNode(StepType type)
+    {
+        var node = new GraphNode
+        {
+            Id = OrchestrationStore.NewId(),
+            Type = type,
+            Title = StepName(type),
+            X = 120 + _graph.Nodes.Count * 18 % 360,
+            Y = 120 + _graph.Nodes.Count * 36 % 280,
+            MaxIterations = type is StepType.Loop or StepType.Agent or StepType.Evaluator ? 3 : 0,
+            Routes = type is StepType.Evaluator or StepType.IfElse ? ["yes", "no"] : [],
+        };
+        _graph.Nodes.Add(node);
+        var m = new StepNodeModel(node);
+        m.RequestEdit = () => OpenInspector(m);
+        _diagram.Nodes.Add(m);
+        _nodeModels[node.Id] = m;
+        OpenInspector(m);
+    }
+
+    private void OpenInspector(StepNodeModel m)
+    {
+        _selected = m;
+        StateHasChanged();
+    }
+
+    private void CloseInspector() => _selected = null;
+
+    private void InspectorChanged()
+    {
+        _selected?.Refresh();
+    }
+
+    private string RoutesText
+    {
+        get => _selected is null ? "" : string.Join(", ", _selected.Data.Routes);
+        set
+        {
+            if (_selected is not null)
+            {
+                _selected.Data.Routes = (value ?? "")
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .ToList();
+                _selected.Refresh();
+            }
+        }
+    }
+
+    private void DeleteSelectedNode()
+    {
+        if (_selected is null)
+        {
+            return;
+        }
+        var id = _selected.Data.Id;
+        _graph.Nodes.RemoveAll(n => n.Id == id);
+        _graph.Edges.RemoveAll(e => e.SourceId == id || e.TargetId == id);
+        _diagram.Nodes.Remove(_selected);
+        _nodeModels.Remove(id);
+        _selected = null;
+    }
+
+    private void SyncFromCanvas()
+    {
+        // Vị trí node
+        foreach (var (id, m) in _nodeModels)
+        {
+            var n = _graph.Nodes.FirstOrDefault(x => x.Id == id);
+            if (n is not null)
+            {
+                n.X = m.Position.X;
+                n.Y = m.Position.Y;
+            }
+        }
+        // Edge do user vẽ thêm trên canvas
+        var edges = new List<GraphEdge>();
+        foreach (var link in _diagram.Links)
+        {
+            var sId = NodeIdOf(link.Source);
+            var tId = NodeIdOf(link.Target);
+            if (sId is null || tId is null)
+            {
+                continue;
+            }
+            var label = link.Labels.FirstOrDefault()?.Content ?? string.Empty;
+            edges.Add(new GraphEdge { Id = OrchestrationStore.NewId(), SourceId = sId, TargetId = tId, Label = label });
+        }
+        _graph.Edges = edges;
+    }
+
+    private static string? NodeIdOf(Anchor anchor)
+        => anchor is SinglePortAnchor { Port.Parent: StepNodeModel sn } ? sn.Data.Id : null;
+
+    private void Save()
+    {
+        SyncFromCanvas();
+        Store.Save(_graph);
+        _all = Store.All().ToList();
+        Log("💾 Đã lưu orchestration.");
+    }
+
+    private void Duplicate()
+    {
+        SyncFromCanvas();
+        Store.Save(_graph);
+        var clone = Store.Duplicate(_graph.Id);
+        _graph = clone;
+        _all = Store.All().ToList();
+        BuildDiagram();
+    }
+
+    private void DeleteGraph()
+    {
+        Store.Delete(_graph.Id);
+        _all = Store.All().ToList();
+        _graph = _all.FirstOrDefault() ?? Store.Create();
+        _all = Store.All().ToList();
+        _runLog.Clear();
+        BuildDiagram();
+    }
+
+    private CancellationTokenSource? _runCts;
+
+    /// <summary>Thông dịch đồ thị: đi từ node Start theo edge, mỗi node 1 lượt LLM (Demo),
+    /// sáng node realtime + stream Run Log. Evaluator rẽ nhánh theo isConsistent ⇒ minh hoạ vòng lặp.</summary>
+    private async Task Run()
+    {
+        if (_running)
+        {
+            return;
+        }
+        _bottomTab = 2;
+        ResetRunState();
+        _running = true;
+        DemoCtx.UseDemo = true; // orchestration chạy offline bằng dữ liệu Demo
+        _runCts = new CancellationTokenSource();
+        var ct = _runCts.Token;
+
+        var start = _graph.Nodes.FirstOrDefault(n => n.IsStart) ?? _graph.Nodes.FirstOrDefault();
+        if (start is null)
+        {
+            Log("⚠ Đồ thị rỗng — không có node để chạy.");
+            _running = false;
+            return;
+        }
+
+        Log($"▶ Run \"{_graph.Name}\"  ·  input: {(string.IsNullOrWhiteSpace(_runInput) ? "(mặc định)" : _runInput)}");
+        var client = LlmFactory.CreateDefault();
+        var visits = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        try
+        {
+            var current = start;
+            var guard = 0;
+            while (current is not null && guard++ < 30)
+            {
+                ct.ThrowIfCancellationRequested();
+                visits[current.Id] = visits.GetValueOrDefault(current.Id) + 1;
+
+                if (_nodeModels.TryGetValue(current.Id, out var mStart))
+                {
+                    mStart.RunState = NodeRunState.Running;
+                    mStart.Refresh();
+                }
+                await InvokeAsync(StateHasChanged);
+
+                bool? consistent;
+                string meta;
+                try
+                {
+                    (meta, consistent) = await ExecuteNodeAsync(current, client, ct);
+                }
+                catch (LlmException ex)
+                {
+                    SetNode(current, NodeRunState.Failed, null);
+                    Log($"✖ {current.Title}: {ex.Message}");
+                    await InvokeAsync(StateHasChanged);
+                    break;
+                }
+
+                SetNode(current, NodeRunState.Done, meta);
+                Log($"✓ {current.Title}{(consistent is null ? "" : consistent.Value ? "  → pass" : "  → loop")}{(string.IsNullOrEmpty(meta) ? "" : "  ·  " + meta)}");
+                await InvokeAsync(StateHasChanged);
+
+                if (current.Type == StepType.End)
+                {
+                    Log("■ Hoàn tất orchestration.");
+                    break;
+                }
+
+                current = ChooseNext(current, consistent, visits);
+            }
+            if (guard >= 30)
+            {
+                Log("⚠ Dừng: chạm giới hạn 30 bước (tránh vòng lặp vô hạn).");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Log("⏹ Đã huỷ run.");
+        }
+        finally
+        {
+            _running = false;
+            _recentRuns++;
+            _runCts?.Dispose();
+            _runCts = null;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task<(string meta, bool? consistent)> ExecuteNodeAsync(GraphNode node, ILlmClient client, CancellationToken ct)
+    {
+        // Human: không gọi LLM — auto-answer trong chế độ demo.
+        if (node.Type == StepType.Human)
+        {
+            await Task.Delay(450, ct).ConfigureAwait(false);
+            return ("human ✓ (demo auto-approve)", null);
+        }
+        if (node.Type == StepType.End)
+        {
+            return ("", null);
+        }
+
+        var req = new LlmRequest(
+            SystemPrompt: SystemFor(node),
+            UserPrompt: UserFor(node),
+            Model: ModelFor(node),
+            Temperature: 0.2,
+            MaxTokens: 1500);
+        var resp = await client.SendAsync(req, ct).ConfigureAwait(false);
+
+        bool? consistent = null;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(resp.Content);
+            if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("isConsistent", out var p)
+                && p.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
+            {
+                consistent = p.GetBoolean();
+            }
+        }
+        catch (System.Text.Json.JsonException) { /* output không phải JSON object — bỏ qua */ }
+
+        var meta = $"{resp.InputTokens}→{resp.OutputTokens} tok · ${resp.CostUsd:0.0000} · {resp.Latency.TotalMilliseconds:0}ms";
+        return (meta, consistent);
+    }
+
+    /// <summary>Chọn node kế: Evaluator + chưa nhất quán + còn lượt ⇒ rẽ nhánh lùi (loop); ngược lại đi tới.</summary>
+    private GraphNode? ChooseNext(GraphNode node, bool? consistent, Dictionary<string, int> visits)
+    {
+        var outs = _graph.Edges.Where(e => e.SourceId == node.Id).ToList();
+        if (outs.Count == 0)
+        {
+            return null;
+        }
+        GraphNode? Target(GraphEdge e) => _graph.Nodes.FirstOrDefault(n => n.Id == e.TargetId);
+
+        var back = outs.Where(e => Target(e) is { } t && t.X <= node.X).ToList();
+        var fwd = outs.Where(e => Target(e) is { } t && t.X > node.X).ToList();
+
+        var isBranch = node.Category == StepCategory.Evaluator;
+        var underCap = visits.GetValueOrDefault(node.Id) < 3;
+        if (isBranch && consistent == false && back.Count > 0 && underCap)
+        {
+            return Target(back[0]);
+        }
+        return Target(fwd.FirstOrDefault() ?? outs[0]);
+    }
+
+    private string SystemFor(GraphNode n)
+    {
+        // Tận dụng DemoLlmClient: prompt có "Bạn là <X> Agent" ⇒ trả JSON canned đúng schema.
+        if (n.Type == StepType.Agent && !string.IsNullOrWhiteSpace(n.AgentRole))
+        {
+            var role = n.AgentRole switch
+            {
+                "Requirement" => "Requirement", "Coding" => "Coding", "Testing" => "Testing",
+                "Qa" => "QA", _ => n.AgentRole,
+            };
+            return $"Bạn là {role} Agent trong hệ thống Agentic SDLC.";
+        }
+        if (n.Category == StepCategory.Evaluator)
+        {
+            return "Bạn là QA Agent trong hệ thống Agentic SDLC.";
+        }
+        return $"Bạn là trợ lý thực thi bước '{n.Title}'. Trả lời ngắn gọn.";
+    }
+
+    private string UserFor(GraphNode n)
+        => $"Bước: {n.Title}\nMô tả: {n.Description}\nĐầu vào: {n.Input}\nUser input: {(_runInput.Length == 0 ? "(mặc định)" : _runInput)}";
+
+    // Gán model thật theo vai trò ⇒ cost ước tính khớp chiến lược hybrid của luận văn.
+    private static string ModelFor(GraphNode n) => n.AgentRole switch
+    {
+        "Requirement" => "claude-sonnet-4",
+        "Coding" => "gpt-4.1",
+        "Testing" => "gpt-4o-mini",
+        _ => "claude-haiku-4-5",
+    };
+
+    private void SetNode(GraphNode node, NodeRunState state, string? meta)
+    {
+        if (_nodeModels.TryGetValue(node.Id, out var m))
+        {
+            m.RunState = state;
+            m.RunMeta = meta;
+            m.Refresh();
+        }
+    }
+
+    private void ResetRunState()
+    {
+        _runLog.Clear();
+        foreach (var m in _nodeModels.Values)
+        {
+            m.RunState = NodeRunState.Idle;
+            m.RunMeta = null;
+            m.Refresh();
+        }
+    }
+
+    private void Log(string line) => _runLog.Add($"[{DateTime.Now:HH:mm:ss}] {line}");
+
+    public void Dispose() { }
+
+    // ---- palette helpers ----
+    private static string StepName(StepType t) => t switch
+    {
+        StepType.Llm => "LLM", StepType.Agent => "Agent", StepType.Tool => "Tool",
+        StepType.Evaluator => "Evaluator", StepType.Parallel => "Parallel", StepType.Merge => "Merge",
+        StepType.Loop => "Loop", StepType.Human => "Human", StepType.Transform => "Transform",
+        StepType.ExtractJson => "Extract JSON", StepType.IfElse => "If / Else", StepType.Switch => "Switch",
+        StepType.Print => "Print", StepType.End => "End", _ => t.ToString(),
+    };
+
+    private static string StepIcon(StepType t) => t switch
+    {
+        StepType.Llm => "⚡", StepType.Agent => "◆", StepType.Tool => "🔧", StepType.Evaluator => "◈",
+        StepType.Parallel => "⑂", StepType.Merge => "⑃", StepType.Loop => "↻", StepType.Human => "◉",
+        StepType.Transform => "⇄", StepType.ExtractJson => "{}", StepType.IfElse => "⌥", StepType.Switch => "⇆",
+        StepType.Print => "🖶", StepType.End => "■", _ => "▣",
+    };
+
+    private static string NavIcon(string item) => item switch
+    {
+        "Orchestrations" => "🕸", "Build Agents" => "🤖", "MCP Servers" => "🖧", "Tool Builder" => "🔧",
+        "Repos" => "🗂", "DB Configs" => "🗄", "Models" => "◴", "Messaging" => "✉", "Integrations" => "🔌",
+        "Schedules" => "🕒", "Vault" => "🔒", "Usage" => "＄", "Logs" => "▦", "Memory" => "🧠", "API Keys" => "🔑",
+        _ => "•",
+    };
+}

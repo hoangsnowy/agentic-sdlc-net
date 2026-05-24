@@ -25,6 +25,9 @@
 # Rider
 **/.idea/
 
+# App runtime data (orchestrations seed tự sinh lại lúc startup)
+**/App_Data/
+
 # Cache and temp
 **/TestResults/
 **/coverage/

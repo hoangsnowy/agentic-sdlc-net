@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>AgenticSdlc.Web</RootNamespace>
+    <AssemblyName>AgenticSdlc.Web</AssemblyName>
+    <UserSecretsId>agentic-sdlc-net-prototype</UserSecretsId>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- Phase 7 — Project trình diễn (Blazor Server). Nới TreatWarningsAsErrors để
+         vòng lặp UI mượt; lõi (Domain/Application/Infrastructure/Api) vẫn giữ nghiêm. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AgenticSdlc.Infrastructure\AgenticSdlc.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Z.Blazor.Diagrams" Version="3.0.4.1" />
+  </ItemGroup>
+
+</Project>
