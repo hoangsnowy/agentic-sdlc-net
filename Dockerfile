@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile cho AgenticSdlc.Api (.NET 10, Phase 6).
+# Multi-stage Dockerfile for AgenticSdlc.Api (.NET 10, Phase 6).
 # Build: docker build -t agentic-sdlc-net:latest .
 # Run:   docker run -p 8080:8080 -e Llm__Anthropic__ApiKey=sk-... agentic-sdlc-net:latest
 
@@ -28,7 +28,7 @@ RUN dotnet publish src/AgenticSdlc.Api/AgenticSdlc.Api.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
-# Base image aspnet:10.0 đã có sẵn non-root user 'app' (uid 1654) — không tạo lại.
+# The aspnet:10.0 base image already includes a non-root user 'app' (uid 1654) — do not recreate it.
 COPY --from=build --chown=app:app /app/publish .
 USER app
 

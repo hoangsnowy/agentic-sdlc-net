@@ -5,9 +5,9 @@
     <AssemblyName>AgenticSdlc.Tests</AssemblyName>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <!-- Test method names theo convention MethodName_StateUnderTest_ExpectedBehavior
-         (Microsoft khuyến nghị cho unit test) — tự nhiên có underscore.
-         Tắt CA1707 cho project test. -->
+    <!-- Test method names follow the MethodName_StateUnderTest_ExpectedBehavior convention
+         (Microsoft's recommendation for unit tests) — naturally contain underscores.
+         Disable CA1707 for the test project. -->
     <NoWarn>$(NoWarn);CA1707</NoWarn>
   </PropertyGroup>
 
@@ -24,11 +24,11 @@
     <PackageReference Include="xunit.v3" Version="1.1.0" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.0.2" />
 
-    <!-- Mocking + assertions: dùng Shouldly (OSS) thay FluentAssertions v8 (đã commercial) -->
+    <!-- Mocking + assertions: use Shouldly (OSS) instead of FluentAssertions v8 (now commercial) -->
     <PackageReference Include="NSubstitute" Version="5.3.0" />
     <PackageReference Include="Shouldly" Version="4.3.0" />
 
-    <!-- Persistence test: EF Core InMemory (jsonb column type bị bỏ qua — đủ test repo logic) -->
+    <!-- Persistence test: EF Core InMemory (the jsonb column type is ignored — enough to test repo logic) -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
 
     <!-- Coverage -->

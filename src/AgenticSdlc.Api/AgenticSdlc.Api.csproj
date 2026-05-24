@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- OpenAPI: Microsoft.AspNetCore.OpenApi sinh openapi.json (native .NET 10);
-         Scalar.AspNetCore phục vụ UI hiện đại (thay thế Swagger UI / Swashbuckle). -->
+    <!-- OpenAPI: Microsoft.AspNetCore.OpenApi generates openapi.json (native .NET 10);
+         Scalar.AspNetCore serves a modern UI (replacing Swagger UI / Swashbuckle). -->
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.6.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.23.0" />

@@ -1,5 +1,5 @@
 // infra/main.bicep
-// Phase 6 — IaC cho Azure Container Apps deployment của AgenticSdlc.Api.
+// Phase 6 — IaC for the Azure Container Apps deployment of AgenticSdlc.Api.
 // Resources: ACR + Log Analytics + App Insights + Container Apps Environment +
 //   Key Vault (LLM secrets) + User-Assigned Identity + Container App.
 
@@ -7,12 +7,12 @@ targetScope = 'resourceGroup'
 
 // ---- Parameters ----
 
-@description('Tên app, dùng cho prefix mọi resource (chữ thường, ≤ 12 ký tự).')
+@description('App name, used as prefix for every resource (lowercase, <= 12 characters).')
 @minLength(3)
 @maxLength(12)
 param appName string = 'agenticsdlc'
 
-@description('Azure region (vd southeastasia, eastus).')
+@description('Azure region (e.g. southeastasia, eastus).')
 param location string = resourceGroup().location
 
 @description('Environment tag: dev | staging | prod.')
@@ -23,10 +23,10 @@ param location string = resourceGroup().location
 ])
 param environmentName string = 'dev'
 
-@description('Image full reference cho API (vd <acr>.azurecr.io/agenticsdlc:abc123).')
+@description('Full image reference for the API (e.g. <acr>.azurecr.io/agenticsdlc:abc123).')
 param containerImage string
 
-@description('Image full reference cho Web/Blazor. Bỏ trống → không deploy Web container (chỉ API).')
+@description('Full image reference for Web/Blazor. Leave empty -> do not deploy the Web container (API only).')
 param webContainerImage string = ''
 
 @description('CPU cores per replica.')
@@ -49,7 +49,7 @@ param cpu string = '0.5'
 ])
 param memory string = '1.0Gi'
 
-@description('Min replicas (scale-to-zero nếu = 0).')
+@description('Min replicas (scale-to-zero if = 0).')
 @minValue(0)
 @maxValue(10)
 param minReplicas int = 0
@@ -59,16 +59,16 @@ param minReplicas int = 0
 @maxValue(30)
 param maxReplicas int = 3
 
-@description('Tạo role assignment (AcrPull + KeyVaultSecretsUser cho UAMI). Cần quyền Owner/User Access Administrator. CI chỉ có Contributor → truyền false; bootstrap role 1 lần bằng deploy thủ công.')
+@description('Create role assignments (AcrPull + KeyVaultSecretsUser for the UAMI). Requires Owner/User Access Administrator. CI only has Contributor -> pass false; bootstrap the roles once via a manual deploy.')
 param deployRoleAssignments bool = true
 
-@description('Provision Azure Database for PostgreSQL flexible server + wire connection string vào Container App. Default false (tránh phát sinh cost ~$13/tháng). Bật → bắt buộc postgresAdminPassword.')
+@description('Provision Azure Database for PostgreSQL flexible server + wire the connection string into the Container App. Default false (avoids ~$13/month cost). Enabled -> postgresAdminPassword is required.')
 param deployPostgres bool = false
 
-@description('Postgres admin login (chỉ dùng khi deployPostgres=true).')
+@description('Postgres admin login (only used when deployPostgres=true).')
 param postgresAdminLogin string = 'pgadmin'
 
-@description('Postgres admin password (@secure). Bắt buộc khi deployPostgres=true.')
+@description('Postgres admin password (@secure). Required when deployPostgres=true.')
 @secure()
 param postgresAdminPassword string = ''
 
@@ -131,7 +131,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
   }
 }
 
-// Cho identity quyền AcrPull
+// Grant the identity AcrPull
 resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployRoleAssignments) {
   name: guid(acr.id, identity.id, 'AcrPull')
   scope: acr
@@ -143,7 +143,7 @@ resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (
   }
 }
 
-// ---- Key Vault cho LLM secrets ----
+// ---- Key Vault for LLM secrets ----
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: kvName
@@ -160,7 +160,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   }
 }
 
-// Cho identity quyền đọc secret
+// Grant the identity permission to read secrets
 resource kvSecretsUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployRoleAssignments) {
   name: guid(keyVault.id, identity.id, 'KeyVaultSecretsUser')
   scope: keyVault
@@ -172,7 +172,7 @@ resource kvSecretsUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' 
   }
 }
 
-// ---- Postgres flexible server (tuỳ chọn, persistence layer) ----
+// ---- Postgres flexible server (optional, persistence layer) ----
 
 resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = if (deployPostgres) {
   name: pgServerName
@@ -203,7 +203,7 @@ resource postgresDb 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2024-08
   name: pgDatabaseName
 }
 
-// Special rule start=end=0.0.0.0 ⇒ cho phép mọi Azure service (Container App) kết nối.
+// Special rule start=end=0.0.0.0 => allows any Azure service (Container App) to connect.
 resource postgresFirewallAzure 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2024-08-01' = if (deployPostgres) {
   parent: postgres
   name: 'AllowAllAzureServices'
@@ -235,7 +235,7 @@ resource cae 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
-// Secrets + env dùng chung cho cả API và Web container (cùng engine in-process).
+// Secrets + env shared by both the API and Web containers (same in-process engine).
 var containerSecrets = concat([
   {
     name: 'appinsights-connection-string'
@@ -244,7 +244,7 @@ var containerSecrets = concat([
 ], deployPostgres ? [
   {
     name: 'db-connection'
-    // postgres chỉ deploy khi deployPostgres=true — cùng điều kiện với nhánh này.
+    // postgres is only deployed when deployPostgres=true — the same condition as this branch.
     #disable-next-line BCP318
     value: 'Host=${postgres.properties.fullyQualifiedDomainName};Port=5432;Database=${pgDatabaseName};Username=${postgresAdminLogin};Password=${postgresAdminPassword};SSL Mode=Require;Trust Server Certificate=true'
   }
@@ -359,7 +359,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
 }
 
 // ---- Container App: Web (Blazor — Agent Studio UI) ----
-// Conditional theo webContainerImage. Chia sẻ CAE/ACR/UAMI/KV/AppInsights với API.
+// Conditional on webContainerImage. Shares CAE/ACR/UAMI/KV/AppInsights with the API.
 
 resource webApp 'Microsoft.App/containerApps@2024-03-01' = if (deployWeb) {
   name: webAppName
