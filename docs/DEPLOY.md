@@ -1,6 +1,7 @@
 # Deploy quickstart
 
-This is the quickstart. Detailed guide: [DEPLOYMENT.md](DEPLOYMENT.md). Bicep template: [infra/main.bicep](../infra/main.bicep). Workflow: [.github/workflows/deploy.yml](../.github/workflows/deploy.yml).
+> ⚠️ **Superseded.** Deployment moved to .NET Aspire + `azd` — see [infra/README.md](../infra/README.md).
+> The Bicep + Docker GitHub Actions flow below was removed; this page is kept for historical reference only.
 
 ## Components
 

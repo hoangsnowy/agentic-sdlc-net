@@ -1,6 +1,7 @@
 # Deployment — Azure Container Apps
 
-A guide to deploy `AgenticSdlc.Api` to Azure Container Apps via Bicep + GitHub Actions.
+> ⚠️ **Superseded.** Deployment moved to .NET Aspire + `azd` — see [infra/README.md](../infra/README.md).
+> The Bicep + GitHub Actions flow below was removed; this page is kept for historical reference only.
 
 ## 1. One-time setup (Azure side)
 

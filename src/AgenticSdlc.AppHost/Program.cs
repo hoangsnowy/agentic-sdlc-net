@@ -3,8 +3,10 @@
 // ConnectionStrings__DefaultConnection, matching AddPersistence in Infrastructure.
 var builder = DistributedApplication.CreateBuilder(args);
 
-var db = builder.AddPostgres("postgres")
-    .WithDataVolume()
+// Deploy (azd): a managed Azure Database for PostgreSQL flexible server.
+// Local: runs as a Postgres container (data persisted via volume).
+var db = builder.AddAzurePostgresFlexibleServer("postgres")
+    .RunAsContainer(c => c.WithDataVolume())
     .AddDatabase("DefaultConnection", databaseName: "agentic_sdlc");
 
 builder.AddProject<Projects.AgenticSdlc_Api>("api")
