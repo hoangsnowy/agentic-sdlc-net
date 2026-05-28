@@ -72,10 +72,9 @@
             </div>
         }
 
-        @* ===== About window ===== *@
-        @if (_aboutOpen)
-        {
-            <Window Title="About — Agentic SDLC" X="180" Y="80" W="440" H="280" OnClose="@(() => _aboutOpen = false)">
+        @* ===== About dialog ===== *@
+        <Dialog Show="_aboutOpen" Title="About — Agentic SDLC" Width="440" OnClose="@(() => _aboutOpen = false)">
+            <ChildContent>
                 <h3 class="about-h">Agentic SDLC</h3>
                 <p class="about-tag">A .NET multi-agent AI framework for the software development lifecycle.</p>
                 <table class="about-tbl">
@@ -84,8 +83,11 @@
                     <tr><th>License</th><td>MIT</td></tr>
                     <tr><th>Source</th><td><a href="https://github.com/hoangsnowy/agentic-sdlc-net" target="_blank">github.com/hoangsnowy/agentic-sdlc-net</a></td></tr>
                 </table>
-            </Window>
-        }
+            </ChildContent>
+            <Footer>
+                <Btn OnClick="@(() => _aboutOpen = false)">Close</Btn>
+            </Footer>
+        </Dialog>
 
         <!-- Toolbar (icon strip) -->
         <div class="toolbar-strip">

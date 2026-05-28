@@ -1,0 +1,24 @@
+@* Panel — classic enterprise panel with title bar + body. *@
+
+<div class="panel @(ExtraClass ?? "")">
+    @if (!string.IsNullOrEmpty(Title) || HeaderActions is not null)
+    {
+        <div class="panel-head">
+            <h2 class="panel-title">@Title</h2>
+            @if (HeaderActions is not null)
+            {
+                <div class="panel-actions">@HeaderActions</div>
+            }
+        </div>
+    }
+    <div class="panel-body">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? ExtraClass { get; set; }
+    [Parameter] public RenderFragment? HeaderActions { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

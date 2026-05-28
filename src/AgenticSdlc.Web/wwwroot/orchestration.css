@@ -77,12 +77,13 @@ html, body { margin: 0; height: 100%; }
 
 .syn-root {
     display: flex;
-    height: 100vh;
+    height: 100%;
+    min-height: 100%;
     width: 100%;
     background: var(--syn-bg);
     color: var(--syn-text);
-    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-    font-size: 14px;
+    font-family: var(--font, "Segoe UI", system-ui, -apple-system, sans-serif);
+    font-size: 13px;
     overflow: hidden;
 }
 
