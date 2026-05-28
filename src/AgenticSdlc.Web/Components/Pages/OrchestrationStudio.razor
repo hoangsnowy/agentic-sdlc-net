@@ -14,6 +14,7 @@
 @inject OrchestrationStore Store
 @inject ILlmClientFactory LlmFactory
 @inject DemoRunContext DemoCtx
+@inject Microsoft.Extensions.Options.IOptions<LlmOptions> LlmOpts
 @inject Microsoft.JSInterop.IJSRuntime JS
 @implements IDisposable
 
@@ -65,6 +66,13 @@
             <div class="syn-spacer"></div>
 
             <button class="syn-btn" @onclick="Save">💾 Save</button>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#9aa6b2;cursor:pointer;" title="Demo = offline canned data. Uncheck to call the real LLM (needs API key + set Llm:ForceProvider).">
+                <input type="checkbox" @bind="_useDemo" /> Demo
+            </label>
+            @if (!_useDemo)
+            {
+                <span style="font-size:12px;color:#5cc8ff;" title="Active LLM provider for live runs">Live: @ActiveProvider</span>
+            }
             <button class="syn-btn green" @onclick="Run" disabled="@_running">▶ @(_running ? "Running…" : "Run")</button>
             <button class="syn-btn purple" disabled>Deploy as Agent</button>
             <button class="syn-btn" @onclick="Duplicate">Duplicate</button>
@@ -198,7 +206,12 @@
     private string _runInput = string.Empty;
     private readonly List<string> _runLog = [];
     private bool _running;
+    private bool _useDemo = true;
     private int _recentRuns;
+
+    private string ActiveProvider => string.IsNullOrWhiteSpace(LlmOpts.Value.ForceProvider)
+        ? LlmOpts.Value.Provider
+        : $"{LlmOpts.Value.ForceProvider} (forced)";
 
     private static readonly string[] NavItems =
     [
@@ -443,7 +456,7 @@
         _bottomTab = 2;
         ResetRunState();
         _running = true;
-        DemoCtx.UseDemo = true; // orchestration runs offline using Demo data
+        DemoCtx.UseDemo = _useDemo; // Demo = offline canned data; Live = real LLM via the configured provider
         _runCts = new CancellationTokenSource();
         var ct = _runCts.Token;
 
@@ -456,6 +469,7 @@
         }
 
         Log($"▶ Run \"{_graph.Name}\"  ·  input: {(string.IsNullOrWhiteSpace(_runInput) ? "(default)" : _runInput)}");
+        Log($"mode: {(_useDemo ? "Demo (offline, canned)" : $"Live → {ActiveProvider}")}");
         var client = LlmFactory.CreateDefault();
         var visits = new Dictionary<string, int>(StringComparer.Ordinal);
 

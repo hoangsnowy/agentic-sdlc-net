@@ -45,12 +45,20 @@ public static class AgentsServiceCollectionExtensions
         // Persists run + metrics best-effort (no-op if the DB is not configured via AddPersistence).
         services.TryAddSingleton(TimeProvider.System);
         services.AddTransient<PipelineOrchestrator>();
-        services.AddTransient<IOrchestratorAgent>(sp => new PersistingOrchestratorAgent(
-            sp.GetRequiredService<PipelineOrchestrator>(),
-            sp.GetRequiredService<IPipelineRunRepository>(),
-            sp.GetRequiredService<IMetricsCollector>(),
-            sp.GetRequiredService<TimeProvider>(),
-            sp.GetRequiredService<ILogger<PersistingOrchestratorAgent>>()));
+        services.AddTransient<MafWorkflowOrchestrator>();   // platform-v2: MAF Workflows graph engine
+        services.AddTransient<IOrchestratorAgent>(sp =>
+        {
+            var engine = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<PipelineOptions>>().Value.Engine;
+            IOrchestratorAgent inner = string.Equals(engine, "Workflow", System.StringComparison.OrdinalIgnoreCase)
+                ? sp.GetRequiredService<MafWorkflowOrchestrator>()
+                : sp.GetRequiredService<PipelineOrchestrator>();
+            return new PersistingOrchestratorAgent(
+                inner,
+                sp.GetRequiredService<IPipelineRunRepository>(),
+                sp.GetRequiredService<IMetricsCollector>(),
+                sp.GetRequiredService<TimeProvider>(),
+                sp.GetRequiredService<ILogger<PersistingOrchestratorAgent>>());
+        });
 
         // Defaults to no-op — a host needing realtime (Blazor) overrides it with a scoped registration after AddAgents.
         services.TryAddSingleton<IPipelineProgressSink>(NullPipelineProgressSink.Instance);

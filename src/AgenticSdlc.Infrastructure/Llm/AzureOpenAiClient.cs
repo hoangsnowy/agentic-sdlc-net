@@ -67,6 +67,14 @@ public sealed class AzureOpenAiClient : ILlmClient
         ArgumentNullException.ThrowIfNull(request);
         request.Validate();
 
+        if (string.IsNullOrWhiteSpace(_options.ApiKey) || string.IsNullOrWhiteSpace(_options.Endpoint))
+        {
+            throw new LlmException(
+                "Azure OpenAI not configured. Set 'Llm:AzureOpenAi:ApiKey' and 'Llm:AzureOpenAi:Endpoint' "
+                + "(user-secrets or env).",
+                Provider);
+        }
+
         var stopwatch = Stopwatch.StartNew();
 
         var messages = string.IsNullOrEmpty(request.SystemPrompt)

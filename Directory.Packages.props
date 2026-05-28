@@ -14,6 +14,11 @@
     <PackageVersion Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageVersion Include="Azure.Identity" Version="1.14.0" />
 
+    <!-- Microsoft Agent Framework (MAF) + Microsoft.Extensions.AI -->
+    <PackageVersion Include="Microsoft.Agents.AI" Version="1.7.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.OpenAI" Version="1.7.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.Workflows" Version="1.7.0" />
+
     <!-- JSON schema validation -->
     <PackageVersion Include="JsonSchema.Net" Version="7.*" />
 
@@ -22,7 +27,7 @@
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.6" />
 
     <!-- Persistence: EF Core + Npgsql -->
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
