@@ -941,6 +941,183 @@ select {
 .login-brand .brand-sub { font-size: 11px; color: var(--txt-dim); margin-top: 1px; }
 .login-form .btn.login-btn { width: 100%; justify-content: center; margin-top: 4px; }
 .login-hint { font-size: 11px; color: var(--txt-dim); margin-top: 10px; text-align: center; }
+
+/* =================================================================
+   Taskbar — bottom dock (KDE / Windows style)
+   ================================================================= */
+.taskbar {
+    height: 40px;
+    background: linear-gradient(180deg, rgba(14,22,40,.85), rgba(8,16,32,.92));
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border-top: 1px solid rgba(255,255,255,.18);
+    display: flex; align-items: center;
+    padding: 0 6px;
+    gap: 4px;
+    color: #e6edf3;
+    user-select: none;
+    box-shadow: 0 -1px 0 rgba(255,255,255,.10) inset, 0 -10px 30px rgba(0,0,0,.30);
+}
+
+.tb-start {
+    height: 30px; padding: 0 12px;
+    background: linear-gradient(180deg, #4a8cff, #2563eb);
+    color: #fff;
+    border: 1px solid #1d4ed8;
+    border-radius: 5px;
+    font-family: inherit; font-size: 12px; font-weight: 700;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    text-shadow: 0 1px 0 rgba(0,0,0,.20);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.30);
+}
+.tb-start:hover { background: linear-gradient(180deg, #5a98ff, #1d4ed8); }
+.tb-start.open, .tb-start:active { background: #1d4ed8; box-shadow: inset 0 2px 4px rgba(0,0,0,.25); }
+.tb-start-glyph { font-size: 14px; }
+
+.tb-divider { width: 1px; height: 24px; background: rgba(255,255,255,.18); margin: 0 4px; }
+
+.tb-pinned { display: flex; gap: 2px; }
+.tb-app {
+    width: 32px; height: 32px;
+    display: grid; place-items: center;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 5px;
+    color: inherit;
+    text-decoration: none;
+    font-size: 15px;
+    transition: background .12s, border-color .12s;
+}
+.tb-app:hover { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.30); }
+.tb-app.active {
+    background: linear-gradient(180deg, rgba(74,140,255,.40), rgba(37,99,235,.30));
+    border-color: rgba(74,140,255,.60);
+    box-shadow: 0 -2px 0 #4a8cff inset;
+}
+
+.tb-spacer { flex: 1; }
+
+.tb-tray { display: flex; align-items: center; gap: 2px; padding-right: 4px; }
+.tb-tray-item {
+    background: transparent;
+    color: inherit;
+    border: 0;
+    padding: 6px 10px;
+    font-family: inherit; font-size: 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: inline-flex; align-items: center; gap: 6px;
+}
+.tb-tray-item:hover { background: rgba(255,255,255,.12); }
+.tb-clock { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.tb-user { gap: 7px; }
+.tb-avatar {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4a8cff, #7c3aed);
+    color: #fff;
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 700;
+    border: 1px solid rgba(255,255,255,.30);
+}
+
+/* =================================================================
+   Cascading Start menu — anchored to taskbar, opens upward
+   ================================================================= */
+.start-menu.cascading {
+    bottom: 40px; top: auto;
+    left: 4px;
+    width: 480px;
+    border-radius: var(--r-4) var(--r-4) 0 0;
+    border-bottom: 0;
+    overflow: hidden;
+    animation: sm-open-up .12s ease-out;
+}
+@keyframes sm-open-up { from { transform: translateY(4px); opacity: .7; } to { transform: translateY(0); opacity: 1; } }
+
+.start-menu.cascading .sm-panes {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    min-height: 220px;
+}
+.start-menu.cascading .sm-cats {
+    background: rgba(15,23,42,.08);
+    border-right: 1px solid rgba(15,23,42,.10);
+    padding: 6px 4px;
+    display: flex; flex-direction: column; gap: 2px;
+}
+.sm-cat {
+    display: flex; align-items: center; gap: 9px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12.5px;
+    color: var(--txt);
+    cursor: pointer;
+}
+.sm-cat:hover, .sm-cat.active {
+    background: linear-gradient(180deg, rgba(74,140,255,.20), rgba(37,99,235,.18));
+    color: var(--accent);
+    font-weight: 600;
+}
+.sm-cat .sm-arrow { margin-left: auto; font-size: 10px; opacity: .7; }
+.sm-items { padding: 6px 4px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.start-menu.cascading .sm-item { font-size: 12.5px; padding: 6px 12px; }
+.sm-item.sm-danger { color: var(--err); }
+.sm-item.sm-danger:hover { background: rgba(220,38,38,.10); color: var(--err); }
+
+/* =================================================================
+   Toast notifications — bottom-right slide-in
+   ================================================================= */
+.toast-container {
+    position: fixed;
+    right: 16px;
+    bottom: 56px;  /* above taskbar */
+    z-index: 9500;
+    display: flex; flex-direction: column-reverse; gap: 8px;
+    pointer-events: none;
+}
+.toast {
+    pointer-events: auto;
+    min-width: 280px; max-width: 380px;
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--line-strong);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--r-3);
+    box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    animation: toast-in .18s ease-out;
+}
+@keyframes toast-in { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.toast-ic {
+    width: 22px; height: 22px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    color: #fff;
+    background: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+    flex: none;
+}
+.toast.toast-ok   { border-left-color: var(--ok); }
+.toast.toast-ok   .toast-ic { background: var(--ok); }
+.toast.toast-warn { border-left-color: var(--warn); }
+.toast.toast-warn .toast-ic { background: var(--warn); }
+.toast.toast-err  { border-left-color: var(--err); }
+.toast.toast-err  .toast-ic { background: var(--err); }
+.toast-body { flex: 1; min-width: 0; }
+.toast-title { font-size: 12.5px; font-weight: 700; color: var(--txt); }
+.toast-msg { font-size: 11.5px; color: var(--txt-dim); margin-top: 2px; line-height: 1.35; }
+.toast-close {
+    background: transparent; border: 0; color: var(--txt-dim);
+    cursor: pointer; font-size: 16px; line-height: 1;
+    padding: 0; width: 18px; height: 18px;
+}
+.toast-close:hover { color: var(--txt); }
 .topbar-spacer { flex: 1; }
 .theme-btn {
     background: linear-gradient(180deg, #ffffff, #f1f4f8);

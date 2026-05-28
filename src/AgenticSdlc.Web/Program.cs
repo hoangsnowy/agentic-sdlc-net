@@ -53,6 +53,9 @@ builder.Services.AddScoped<IPipelineProgressSink>(sp => sp.GetRequiredService<Ci
 // Orchestration store (drag-and-drop editor graphs) — singleton, seeds + saves JSON.
 builder.Services.AddSingleton<AgenticSdlc.Web.Orchestrations.OrchestrationStore>();
 
+// Toast notification bus — any page can push, ToastHost listens.
+builder.Services.AddSingleton<AgenticSdlc.Web.Services.ToastService>();
+
 var app = builder.Build();
 
 // Apply the EF migration at startup (no-op if the DB is not configured).
