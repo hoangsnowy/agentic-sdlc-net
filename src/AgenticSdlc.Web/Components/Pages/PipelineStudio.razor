@@ -1,14 +1,43 @@
-@page "/timeline"
 @using AgenticSdlc.Application.Agents
 @using Microsoft.Extensions.DependencyInjection
 @using AgenticSdlc.Domain.Llm
 @inject IServiceProvider Sp
-@inject DemoRunContext DemoCtx
 @inject CircuitPipelineProgress Progress
 @inject Microsoft.Extensions.Options.IOptions<LlmOptions> LlmOpts
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
+@inject AgenticSdlc.Application.Integration.IGitHubPrService GitHubPr
+@inject AgenticSdlc.Application.Integration.IBuildVerifier BuildVerifier
 @implements IDisposable
 
-<PageTitle>Agent Studio — Agentic SDLC</PageTitle>
+<PageTitle>Pipeline — AgentOS</PageTitle>
+
+<div class="appins">
+
+<div class="app-toolbar">
+    <div class="app-toolbar-left">
+        <button class="app-tb-btn primary" @onclick="RunAsync" disabled="@(_running || string.IsNullOrWhiteSpace(_description))" title="Run pipeline">
+            <span class="app-tb-ic">▶</span> @(_running ? "Running…" : "Run")
+        </button>
+        @if (_running)
+        {
+            <button class="app-tb-btn" @onclick="Cancel" title="Cancel"><span class="app-tb-ic">⏹</span> Cancel</button>
+        }
+        <span class="app-tb-sep"></span>
+        <span class="app-tb-lbl">NMax</span>
+        <input type="number" min="1" max="5" @bind="_nmax" class="app-tb-num" />
+    </div>
+    <div class="app-toolbar-right">
+        <span class="status-chip mode-live"><span class="tb-dot ok"></span> @ActiveProvider</span>
+        @if (_dbConnected)
+        {
+            <span class="status-chip db-on">🗄 Postgres</span>
+        }
+        else
+        {
+            <span class="status-chip db-off">⊘ Stateless</span>
+        }
+    </div>
+</div>
 
 <div class="studio-grid">
 
@@ -27,11 +56,6 @@
                 <input type="number" min="1" max="5" @bind="_nmax" />
             </label>
 
-            <label class="toggle">
-                <input type="checkbox" @bind="_useDemo" />
-                Run in Demo mode (offline, no API key required)
-            </label>
-
             <button class="run" @onclick="RunAsync" disabled="@(_running || string.IsNullOrWhiteSpace(_description))">
                 @(_running ? "Running pipeline…" : "▶ Run pipeline")
             </button>
@@ -40,14 +64,7 @@
                 <button class="ghost" @onclick="Cancel">Cancel</button>
             }
 
-            @if (!_useDemo)
-            {
-                <p class="hint">Live mode → provider <strong>@ActiveProvider</strong>. Set the API key in user-secrets. Azure-only: set <code>Llm:ForceProvider=AzureOpenAI</code> + your Azure deployment in <code>Llm:AzureOpenAi:Model</code>.</p>
-            }
-            else
-            {
-                <p class="hint">Demo mode uses sample data, runs offline, and simulates QA failing the first round → passing the next to illustrate the Quality Loop.</p>
-            }
+            <p class="hint">Live mode → provider <strong>@ActiveProvider</strong>. Set API keys + provider on <a href="/settings">Settings</a> (or via <code>dotnet user-secrets</code>).</p>
         </div>
 
         <div class="card">
@@ -66,6 +83,14 @@
         <div class="card">
             <h2>Agent progress</h2>
             <div class="timeline">
+                <div class="stage leader @LeaderState()">
+                    <div class="dot">◆</div>
+                    <div>
+                        <div class="label">Orchestrator <span class="badge info">Leader</span></div>
+                        <div class="sub">Assigns the user story to specialists · drives the Quality Loop</div>
+                    </div>
+                    <div class="meta"><span class="prov anthropic">Claude</span></div>
+                </div>
                 @foreach (var stage in _order)
                 {
                     var row = _stages[stage];
@@ -74,6 +99,7 @@
                         <div>
                             <div class="label">
                                 @_title[stage]
+                                <span class="prov @_agentProv[stage]">@ProvName(stage)</span>
                                 @if ((stage == PipelineStage.Coding || stage == PipelineStage.Testing || stage == PipelineStage.Qa)
                                      && row.State != StageState.Idle && _currentIteration > 0)
                                 {
@@ -93,6 +119,7 @@
                     @foreach (var r in _qaRounds)
                     {
                         <div class="qa-round">
+                            <span class="grade @QaGrade(r.Score)">@QaGrade(r.Score)</span>
                             <span>Round @r.Iteration</span>
                             <span class="score">@r.Score.ToString("0.00")</span>
                             <span class="score-bar"><i style="width:@((int)(r.Score * 100))%"></i></span>
@@ -111,7 +138,10 @@
 
             @if (_error is not null)
             {
-                <p style="margin-top:14px"><span class="badge err">Error</span> <span class="muted">@_error</span></p>
+                <div class="issues-panel" style="margin-top:14px">
+                    <h3>Pipeline error</h3>
+                    <ul><li>@_error</li></ul>
+                </div>
             }
             else if (_result is not null)
             {
@@ -204,6 +234,52 @@
                     }
                 }
             </div>
+
+            @if (_result?.Code is not null && _result.Code.Files.Count > 0)
+            {
+                <div class="card">
+                    <h2>Verify build (sandbox)</h2>
+                    <p class="muted">Write the generated files to a temp directory and run <code>dotnet build</code> to check the agent's output actually compiles. Real container sandbox is on the roadmap.</p>
+                    <button class="run" @onclick="VerifyBuildAsync" disabled="@_verifying">
+                        @(_verifying ? "Building…" : "🔨 Verify build")
+                    </button>
+                    @if (_buildResult is not null)
+                    {
+                        <p class="hint" style="margin-top:10px">
+                            @if (_buildResult.Success)
+                            {
+                                <span class="badge ok">Build OK</span>
+                            }
+                            else
+                            {
+                                <span class="badge err">Build failed</span>
+                            }
+                            <span class="muted"> exit @_buildResult.ExitCode · @(_buildResult.ElapsedMilliseconds)ms</span>
+                        </p>
+                        <pre class="code">@_buildResult.Output</pre>
+                    }
+                    @if (_buildError is not null)
+                    {
+                        <p class="hint" style="margin-top:10px"><span class="badge err">Error</span> <span class="muted">@_buildError</span></p>
+                    }
+                </div>
+
+                <div class="card">
+                    <h2>Push to GitHub</h2>
+                    <p class="muted">Open a pull request with the generated code + tests to a target repo. Set PAT + repo on <a href="/settings">Settings</a>.</p>
+                    <button class="run" @onclick="OpenPrAsync" disabled="@_openingPr">
+                        @(_openingPr ? "Opening PR…" : "🚀 Open PR on GitHub")
+                    </button>
+                    @if (_prUrl is not null)
+                    {
+                        <p class="hint" style="margin-top:10px"><span class="badge ok">PR opened</span> <a href="@_prUrl" target="_blank">@_prUrl</a></p>
+                    }
+                    @if (_prError is not null)
+                    {
+                        <p class="hint" style="margin-top:10px"><span class="badge err">Error</span> <span class="muted">@_prError</span></p>
+                    }
+                </div>
+            }
         }
         else if (_result is null && !_running)
         {
@@ -217,11 +293,46 @@
     </div>
 </div>
 
+<div class="app-statusbar">
+    <span class="asb-item"><strong>@(_tokIn + _tokOut)</strong> tok <span class="asb-sub">(@_tokIn↑ / @_tokOut↓)</span></span>
+    <span class="asb-sep"></span>
+    <span class="asb-item"><strong>$@_cost.ToString("0.0000")</strong> cost</span>
+    <span class="asb-sep"></span>
+    <span class="asb-item"><strong>@((_latencyMs / 1000.0).ToString("0.0"))s</strong> latency</span>
+    <span class="asb-sep"></span>
+    <span class="asb-item"><strong>@_qaRounds.Count</strong> QA rounds</span>
+    <span class="asb-spacer"></span>
+    @if (_running)
+    {
+        <span class="asb-item asb-live"><span class="asb-dot"></span> Running…</span>
+    }
+    else if (_result is not null)
+    {
+        @if (_finalStatus == PipelineStatus.Done)
+        {
+            <span class="asb-item asb-done">✓ Complete</span>
+        }
+        else if (_finalStatus == PipelineStatus.MaxIterationReached)
+        {
+            <span class="asb-item asb-warn">⚠ NMax reached</span>
+        }
+        else
+        {
+            <span class="asb-item asb-err">✕ Failed</span>
+        }
+    }
+    else
+    {
+        <span class="asb-item asb-idle">Ready</span>
+    }
+</div>
+
+</div>
+
 @code {
     // ---- Input ----
     private string _description = "As an administrator, I want to manage products in the catalog with a unique SKU to avoid duplicates.";
     private int _nmax = 3;
-    private bool _useDemo = true;
 
     private string ActiveProvider => string.IsNullOrWhiteSpace(LlmOpts.Value.ForceProvider)
         ? LlmOpts.Value.Provider
@@ -267,10 +378,72 @@
     };
     private readonly Dictionary<PipelineStage, string> _subtitle = new()
     {
-        [PipelineStage.Requirement] = "KC1 · Analyze user story", [PipelineStage.Coding] = "KC2 · Generate C# code",
-        [PipelineStage.Testing] = "KC3 · Generate xUnit tests", [PipelineStage.Qa] = "KC5 · Evaluate consistency",
-        [PipelineStage.Aggregate] = "Finalize result + total cost",
+        [PipelineStage.Requirement] = "Analyze user story", [PipelineStage.Coding] = "Generate C# code",
+        [PipelineStage.Testing] = "Generate xUnit tests", [PipelineStage.Qa] = "Evaluate consistency",
+        [PipelineStage.Aggregate] = "Orchestrator finalizes result + total cost",
     };
+
+    // Hybrid LLM mapping (appsettings Agents:*:Provider) — drives the per-agent provider badge.
+    private readonly Dictionary<PipelineStage, string> _agentProv = new()
+    {
+        [PipelineStage.Requirement] = "anthropic", [PipelineStage.Coding] = "azure",
+        [PipelineStage.Testing] = "azure", [PipelineStage.Qa] = "anthropic", [PipelineStage.Aggregate] = "anthropic",
+    };
+
+    private bool _dbConnected;
+
+    // GitHub PR state
+    private bool _openingPr;
+    private string? _prUrl;
+    private string? _prError;
+
+    // Build verify state
+    private bool _verifying;
+    private AgenticSdlc.Application.Integration.BuildVerifyResult? _buildResult;
+    private string? _buildError;
+
+    private async Task VerifyBuildAsync()
+    {
+        if (_result is null) return;
+        _verifying = true;
+        _buildResult = null;
+        _buildError = null;
+        try
+        {
+            _buildResult = await BuildVerifier.VerifyAsync(_result, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _buildError = ex.Message;
+        }
+        finally
+        {
+            _verifying = false;
+        }
+    }
+
+    private async Task OpenPrAsync()
+    {
+        if (_result?.Code is null) return;
+        _openingPr = true;
+        _prUrl = null;
+        _prError = null;
+        try
+        {
+            var title = $"feat: {_result.Spec?.Title ?? "generated code from Agentic SDLC"}";
+            var body = $"Generated by Agentic SDLC pipeline.\n\n{_result.Spec?.Summary}\n\nFiles: {_result.Code.Files.Count}, Tests: {_result.Tests?.Files.Count ?? 0}";
+            var pr = await GitHubPr.OpenPrAsync(_result, title, body, CancellationToken.None);
+            _prUrl = pr.HtmlUrl;
+        }
+        catch (Exception ex)
+        {
+            _prError = ex.Message;
+        }
+        finally
+        {
+            _openingPr = false;
+        }
+    }
 
     protected override void OnInitialized()
     {
@@ -278,6 +451,7 @@
         {
             _stages[s] = new StageRow();
         }
+        _dbConnected = !string.IsNullOrWhiteSpace(Config.GetConnectionString("DefaultConnection"));
     }
 
     private async Task RunAsync()
@@ -288,7 +462,6 @@
         }
         ResetState();
         _running = true;
-        DemoCtx.UseDemo = _useDemo;
         Progress.Listener = OnProgress;
         _cts = new CancellationTokenSource();
 
@@ -387,6 +560,23 @@
             _stages[s] = new StageRow();
         }
     }
+
+    private string ProvName(PipelineStage s) => _agentProv[s] == "azure" ? "Azure" : "Claude";
+
+    /// <summary>Letter grade for a QA score: A (≥.9), B (≥.8), C (≥.7), D (≥.6), else F.</summary>
+    private static string QaGrade(double score) => score switch
+    {
+        >= 0.9 => "A",
+        >= 0.8 => "B",
+        >= 0.7 => "C",
+        >= 0.6 => "D",
+        _ => "F",
+    };
+
+    private string LeaderState()
+        => _running ? "running"
+         : _result is null ? "idle"
+         : _finalStatus == PipelineStatus.Failed ? "failed" : "done";
 
     private static string StateClass(StageState s) => s switch
     {

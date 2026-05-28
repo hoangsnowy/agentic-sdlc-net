@@ -1,5 +1,3 @@
-@page "/"
-@layout StudioLayout
 @using System.Linq
 @using AgenticSdlc.Web.Orchestrations
 @using Blazor.Diagrams.Core.Geometry
@@ -10,45 +8,29 @@
 @using Blazor.Diagrams.Options
 @using AgenticSdlc.Domain.Llm
 @using AgenticSdlc.Infrastructure.Llm
-@using AgenticSdlc.Web.Services.Demo
 @inject OrchestrationStore Store
 @inject ILlmClientFactory LlmFactory
-@inject DemoRunContext DemoCtx
 @inject Microsoft.Extensions.Options.IOptions<LlmOptions> LlmOpts
 @inject Microsoft.JSInterop.IJSRuntime JS
 @implements IDisposable
 
-<PageTitle>Orchestrations — Agentic SDLC</PageTitle>
+<PageTitle>Agentic Workflow — Agentic SDLC</PageTitle>
 
 <div class="syn-root">
 
-    <!-- ============ SIDEBAR ============ -->
-    <aside class="syn-sidebar">
-        <div class="syn-logo"><span class="g">⚙</span> SETTINGS</div>
-        <nav class="syn-nav">
-            @foreach (var item in NavItems)
-            {
-                <div class="syn-nav-item @(item == "Orchestrations" ? "active" : "")">
-                    <span class="ic">@NavIcon(item)</span> @item
-                </div>
-            }
-        </nav>
-        <div class="syn-version">Agent Studio v1.0</div>
-    </aside>
-
-    <!-- ============ MAIN ============ -->
+    <!-- ============ MAIN (chromeless workspace) ============ -->
     <div class="syn-main">
 
         <div class="syn-topbar">
             <div>
-                <h1>Orchestrations</h1>
+                <h1>Agentic Workflow</h1>
                 <p>Design multi-agent workflows with visual canvas</p>
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
                 <button class="syn-theme-toggle" @onclick="ToggleTheme" title="Toggle light/dark theme">
                     @(_theme == "light" ? "🌙 Dark" : "☀ Light")
                 </button>
-                <a class="syn-close" href="/timeline" title="View legacy timeline">✕</a>
+                <a class="syn-close" href="/" title="Back to the pipeline">← Pipeline</a>
             </div>
         </div>
 
@@ -61,20 +43,12 @@
                 }
             </select>
             <button class="syn-btn" @onclick="NewGraph">+ New</button>
-            <button class="syn-btn purple" @onclick="@(() => {})" disabled>🪄 Build with AI</button>
 
             <div class="syn-spacer"></div>
 
             <button class="syn-btn" @onclick="Save">💾 Save</button>
-            <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#9aa6b2;cursor:pointer;" title="Demo = offline canned data. Uncheck to call the real LLM (needs API key + set Llm:ForceProvider).">
-                <input type="checkbox" @bind="_useDemo" /> Demo
-            </label>
-            @if (!_useDemo)
-            {
-                <span style="font-size:12px;color:#5cc8ff;" title="Active LLM provider for live runs">Live: @ActiveProvider</span>
-            }
+            <span class="syn-live-tag" title="Active LLM provider">⚡ Live · @ActiveProvider</span>
             <button class="syn-btn green" @onclick="Run" disabled="@_running">▶ @(_running ? "Running…" : "Run")</button>
-            <button class="syn-btn purple" disabled>Deploy as Agent</button>
             <button class="syn-btn" @onclick="Duplicate">Duplicate</button>
             <button class="syn-btn ghost" @onclick="DeleteGraph">🗑 Delete</button>
         </div>
@@ -82,7 +56,7 @@
         <!-- name + desc -->
         <div class="syn-namerow">
             <input class="syn-name" @bind="_graph.Name" @bind:event="oninput" />
-            <input class="syn-desc" @bind="_graph.Description" @bind:event="oninput" placeholder="Orchestration description…" />
+            <input class="syn-desc" @bind="_graph.Description" @bind:event="oninput" placeholder="Workflow description…" />
         </div>
 
         <!-- add step palette -->
@@ -206,19 +180,11 @@
     private string _runInput = string.Empty;
     private readonly List<string> _runLog = [];
     private bool _running;
-    private bool _useDemo = true;
     private int _recentRuns;
 
     private string ActiveProvider => string.IsNullOrWhiteSpace(LlmOpts.Value.ForceProvider)
         ? LlmOpts.Value.Provider
         : $"{LlmOpts.Value.ForceProvider} (forced)";
-
-    private static readonly string[] NavItems =
-    [
-        "General", "Personal Details", "Orchestrations", "Build Agents", "MCP Servers",
-        "Tool Builder", "Repos", "DB Configs", "Models", "Messaging", "Integrations",
-        "Schedules", "Vault", "Usage", "Import / Export", "Logs", "Memory", "API Keys", "Support & Docs",
-    ];
 
     private static readonly StepType[] PaletteOrder =
     [
@@ -420,7 +386,7 @@
         SyncFromCanvas();
         Store.Save(_graph);
         _all = Store.All().ToList();
-        Log("💾 Orchestration saved.");
+        Log("💾 Workflow saved.");
     }
 
     private void Duplicate()
@@ -445,7 +411,7 @@
 
     private CancellationTokenSource? _runCts;
 
-    /// <summary>Interprets the graph: starts at the Start node and follows edges, one LLM call per node (Demo),
+    /// <summary>Interprets the graph: starts at the Start node and follows edges, one LLM call per node,
     /// lighting up nodes in realtime + streaming the Run Log. Evaluator branches on isConsistent ⇒ illustrates the loop.</summary>
     private async Task Run()
     {
@@ -456,7 +422,6 @@
         _bottomTab = 2;
         ResetRunState();
         _running = true;
-        DemoCtx.UseDemo = _useDemo; // Demo = offline canned data; Live = real LLM via the configured provider
         _runCts = new CancellationTokenSource();
         var ct = _runCts.Token;
 
@@ -469,7 +434,7 @@
         }
 
         Log($"▶ Run \"{_graph.Name}\"  ·  input: {(string.IsNullOrWhiteSpace(_runInput) ? "(default)" : _runInput)}");
-        Log($"mode: {(_useDemo ? "Demo (offline, canned)" : $"Live → {ActiveProvider}")}");
+        Log($"mode: Live → {ActiveProvider}");
         var client = LlmFactory.CreateDefault();
         var visits = new Dictionary<string, int>(StringComparer.Ordinal);
 
@@ -509,7 +474,7 @@
 
                 if (current.Type == StepType.End)
                 {
-                    Log("■ Orchestration complete.");
+                    Log("■ Workflow complete.");
                     break;
                 }
 
@@ -596,9 +561,8 @@
 
     private string SystemFor(GraphNode n)
     {
-        // Leverages DemoLlmClient: a prompt containing "You are the <X> Agent" ⇒ returns canned JSON matching the schema.
-        // NOTE: the "You are the <X> Agent" prefix is a routing key matched by DemoLlmClient and the Application
-        // prompt files (Application/Prompts/*.cs) — keep these system-prompt literals in sync.
+        // The "You are the <X> Agent" prefix is the canonical system-prompt opener used by the
+        // Application/Prompts/*.cs files — keep these literals in sync if reworded.
         if (n.Type == StepType.Agent && !string.IsNullOrWhiteSpace(n.AgentRole))
         {
             var role = n.AgentRole switch
@@ -618,7 +582,7 @@
     private string UserFor(GraphNode n)
         => $"Step: {n.Title}\nDescription: {n.Description}\nInput: {n.Input}\nUser input: {(_runInput.Length == 0 ? "(default)" : _runInput)}";
 
-    // Assign the real model per role ⇒ estimated cost matches the thesis's hybrid strategy.
+    // Assign the real model per role ⇒ estimated cost reflects the hybrid LLM strategy.
     private static string ModelFor(GraphNode n) => n.AgentRole switch
     {
         "Requirement" => "claude-sonnet-4",
@@ -668,13 +632,5 @@
         StepType.Parallel => "⑂", StepType.Merge => "⑃", StepType.Loop => "↻", StepType.Human => "◉",
         StepType.Transform => "⇄", StepType.ExtractJson => "{}", StepType.IfElse => "⌥", StepType.Switch => "⇆",
         StepType.Print => "🖶", StepType.End => "■", _ => "▣",
-    };
-
-    private static string NavIcon(string item) => item switch
-    {
-        "Orchestrations" => "🕸", "Build Agents" => "🤖", "MCP Servers" => "🖧", "Tool Builder" => "🔧",
-        "Repos" => "🗂", "DB Configs" => "🗄", "Models" => "◴", "Messaging" => "✉", "Integrations" => "🔌",
-        "Schedules" => "🕒", "Vault" => "🔒", "Usage" => "＄", "Logs" => "▦", "Memory" => "🧠", "API Keys" => "🔑",
-        _ => "•",
     };
 }

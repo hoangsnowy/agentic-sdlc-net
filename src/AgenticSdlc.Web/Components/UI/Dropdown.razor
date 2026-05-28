@@ -1,0 +1,16 @@
+@* Dropdown — generic flyout. Position via ExtraClass (dropdown-tr / dropdown-tl / etc.). *@
+
+@if (Show)
+{
+    <div class="dropdown-backdrop" @onclick="OnClose" @oncontextmenu="OnClose" @oncontextmenu:preventDefault="true"></div>
+    <div class="dropdown @(ExtraClass ?? "")" @onclick:stopPropagation="true">
+        @ChildContent
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public string? ExtraClass { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

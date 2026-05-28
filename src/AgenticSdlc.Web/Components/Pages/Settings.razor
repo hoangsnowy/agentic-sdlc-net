@@ -1,0 +1,210 @@
+@using AgenticSdlc.Application.Configuration
+@using AgenticSdlc.Domain.Llm
+@inject Microsoft.Extensions.Options.IOptions<LlmOptions> LlmOpts
+@inject IRuntimeOverrides Overrides
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
+
+<div class="prefs">
+    <aside class="prefs-side">
+        <div class="prefs-side-head">Settings</div>
+        <button class="prefs-cat @(_tab == "status"   ? "active" : "")" @onclick="@(() => _tab = "status")"><span class="prefs-cat-ic">●</span> Status</button>
+        <button class="prefs-cat @(_tab == "providers"? "active" : "")" @onclick="@(() => _tab = "providers")"><span class="prefs-cat-ic">⚡</span> Providers</button>
+        <button class="prefs-cat @(_tab == "keys"     ? "active" : "")" @onclick="@(() => _tab = "keys")"><span class="prefs-cat-ic">🔑</span> API keys</button>
+        <button class="prefs-cat @(_tab == "github"   ? "active" : "")" @onclick="@(() => _tab = "github")"><span class="prefs-cat-ic">↗</span> GitHub</button>
+        <button class="prefs-cat @(_tab == "data"     ? "active" : "")" @onclick="@(() => _tab = "data")"><span class="prefs-cat-ic">🗄</span> Storage</button>
+    </aside>
+
+    <div class="prefs-content">
+        @switch (_tab)
+        {
+            case "status":
+                <div class="prefs-section">
+                    <h2 class="prefs-h">Status</h2>
+                    <p class="prefs-sub">Current effective configuration.</p>
+                </div>
+                <table class="prefs-tbl">
+                    <tr><th>Default provider</th><td><code>@LlmOpts.Value.Provider</code></td></tr>
+                    <tr><th>Effective force provider</th><td>@EffectiveForceLabel()</td></tr>
+                    <tr><th>Anthropic API key</th><td>@KeyState(LlmOpts.Value.Claude.ApiKey)</td></tr>
+                    <tr><th>Azure OpenAI API key</th><td>@KeyState(LlmOpts.Value.AzureOpenAi.ApiKey)</td></tr>
+                    <tr><th>Azure OpenAI endpoint</th><td>@(string.IsNullOrEmpty(LlmOpts.Value.AzureOpenAi.Endpoint) ? "— not set —" : LlmOpts.Value.AzureOpenAi.Endpoint)</td></tr>
+                    <tr><th>Persistence</th><td>@(_dbConnected ? "Postgres connected" : "Stateless (no DB)")</td></tr>
+                </table>
+                break;
+
+            case "providers":
+                <div class="prefs-section">
+                    <h2 class="prefs-h">Providers</h2>
+                    <p class="prefs-sub">Force a single provider for every agent at runtime.</p>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Force provider</strong><br /><span class="prefs-hint">Overrides per-agent configuration.</span></div>
+                    <select @bind="_forceProvider" class="prefs-select">
+                        <option value="">— per-agent config —</option>
+                        <option value="Claude">Claude (Anthropic)</option>
+                        <option value="AzureOpenAI">Azure OpenAI</option>
+                        <option value="MAF">MAF (Azure OpenAI via SDK)</option>
+                    </select>
+                </div>
+                <div class="prefs-actions">
+                    <Btn Variant="Btn.ButtonVariant.Primary" OnClick="Save">Save</Btn>
+                    <Btn Variant="Btn.ButtonVariant.Ghost" OnClick="Clear">Reset</Btn>
+                </div>
+                @if (_saved)
+                {
+                    <div class="prefs-saved"><Chip Variant="Chip.ChipVariant.Ok">Saved</Chip> Applied to subsequent LLM calls.</div>
+                }
+                break;
+
+            case "keys":
+                <div class="prefs-section">
+                    <h2 class="prefs-h">API keys</h2>
+                    <p class="prefs-sub">In-memory overrides — live for this process. Permanent values go in user-secrets.</p>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Anthropic API key</strong></div>
+                    <input type="password" @bind="_anthropicKey" placeholder="sk-ant-..." class="prefs-input" />
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Azure OpenAI API key</strong></div>
+                    <input type="password" @bind="_azureKey" placeholder="(Azure key)" class="prefs-input" />
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Azure OpenAI endpoint</strong></div>
+                    <input type="text" @bind="_azureEndpoint" placeholder="https://your-resource.openai.azure.com" class="prefs-input" />
+                </div>
+                <div class="prefs-actions">
+                    <Btn Variant="Btn.ButtonVariant.Primary" OnClick="Save">Save</Btn>
+                    <Btn Variant="Btn.ButtonVariant.Ghost" OnClick="Clear">Reset</Btn>
+                </div>
+                @if (_saved)
+                {
+                    <div class="prefs-saved"><Chip Variant="Chip.ChipVariant.Ok">Saved</Chip> Applied to subsequent LLM calls.</div>
+                }
+                break;
+
+            case "github":
+                <div class="prefs-section">
+                    <h2 class="prefs-h">GitHub integration</h2>
+                    <p class="prefs-sub">Open a PR with the generated code to a target repo. PAT needs the <code>repo</code> scope.</p>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Personal access token</strong></div>
+                    <input type="password" @bind="_githubPat" placeholder="ghp_..." class="prefs-input" />
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Repo owner</strong></div>
+                    <input type="text" @bind="_repoOwner" placeholder="your-username" class="prefs-input" />
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Repo name</strong></div>
+                    <input type="text" @bind="_repoName" placeholder="target-repo" class="prefs-input" />
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Base branch</strong></div>
+                    <input type="text" @bind="_baseBranch" placeholder="main" class="prefs-input" />
+                </div>
+                <div class="prefs-actions">
+                    <Btn Variant="Btn.ButtonVariant.Primary" OnClick="SaveGithub">Save</Btn>
+                </div>
+                @if (_savedGithub)
+                {
+                    <div class="prefs-saved"><Chip Variant="Chip.ChipVariant.Ok">Saved</Chip> "Open PR" on the pipeline will use these.</div>
+                }
+                break;
+
+            case "data":
+                <div class="prefs-section">
+                    <h2 class="prefs-h">Storage</h2>
+                    <p class="prefs-sub">Where pipeline data lives.</p>
+                </div>
+                <ul class="prefs-list">
+                    <li><strong>Pipeline results</strong>: in-memory unless <code>ConnectionStrings:DefaultConnection</code> is set → Postgres tables <code>pipeline_runs</code> / <code>run_metrics</code> / <code>orchestrations</code>.</li>
+                    <li><strong>API keys</strong>: persistent values live in <code>dotnet user-secrets</code> (dev) or environment variables (prod). Runtime overrides on the "API keys" tab are in-memory only.</li>
+                    <li><strong>Generated code / tests</strong>: returned inline in the pipeline response. Use the <em>Verify build</em> card on the Pipeline app to compile them in a temp dir.</li>
+                    <li><strong>GitHub PR</strong>: <em>Open PR</em> on the Pipeline app commits the generated files + opens a PR against the repo configured on the GitHub tab.</li>
+                </ul>
+                <details class="prefs-details">
+                    <summary>CLI setup</summary>
+                    <pre class="code">cd src/AgenticSdlc.Api
+dotnet user-secrets set "Llm:Claude:ApiKey"      "sk-ant-..."
+dotnet user-secrets set "Llm:AzureOpenAi:ApiKey" "..."
+dotnet user-secrets set "Llm:AzureOpenAi:Endpoint" "https://your-resource.openai.azure.com"</pre>
+                </details>
+                break;
+        }
+    </div>
+</div>
+
+@code {
+    private string _tab = "status";
+
+    private string _forceProvider = "";
+    private string _anthropicKey = "";
+    private string _azureKey = "";
+    private string _azureEndpoint = "";
+    private bool _saved;
+    private bool _dbConnected;
+
+    private string _githubPat = "";
+    private string _repoOwner = "";
+    private string _repoName = "";
+    private string _baseBranch = "";
+    private bool _savedGithub;
+
+    protected override void OnInitialized()
+    {
+        _forceProvider = Overrides.ForceProvider ?? "";
+        _anthropicKey = Overrides.AnthropicApiKey ?? "";
+        _azureKey = Overrides.AzureApiKey ?? "";
+        _azureEndpoint = Overrides.AzureEndpoint ?? "";
+        _dbConnected = !string.IsNullOrWhiteSpace(Config.GetConnectionString("DefaultConnection"));
+
+        _githubPat = Overrides.GitHubPat ?? "";
+        _repoOwner = Overrides.GitHubRepoOwner ?? "";
+        _repoName = Overrides.GitHubRepoName ?? "";
+        _baseBranch = Overrides.GitHubBaseBranch ?? "";
+    }
+
+    private void Save()
+    {
+        Overrides.ForceProvider = string.IsNullOrWhiteSpace(_forceProvider) ? null : _forceProvider;
+        Overrides.AnthropicApiKey = string.IsNullOrWhiteSpace(_anthropicKey) ? null : _anthropicKey;
+        Overrides.AzureApiKey = string.IsNullOrWhiteSpace(_azureKey) ? null : _azureKey;
+        Overrides.AzureEndpoint = string.IsNullOrWhiteSpace(_azureEndpoint) ? null : _azureEndpoint;
+        _saved = true;
+    }
+
+    private void Clear()
+    {
+        Overrides.ForceProvider = null;
+        Overrides.AnthropicApiKey = null;
+        Overrides.AzureApiKey = null;
+        Overrides.AzureEndpoint = null;
+        _forceProvider = _anthropicKey = _azureKey = _azureEndpoint = "";
+        _saved = true;
+    }
+
+    private void SaveGithub()
+    {
+        Overrides.GitHubPat = string.IsNullOrWhiteSpace(_githubPat) ? null : _githubPat;
+        Overrides.GitHubRepoOwner = string.IsNullOrWhiteSpace(_repoOwner) ? null : _repoOwner;
+        Overrides.GitHubRepoName = string.IsNullOrWhiteSpace(_repoName) ? null : _repoName;
+        Overrides.GitHubBaseBranch = string.IsNullOrWhiteSpace(_baseBranch) ? null : _baseBranch;
+        _savedGithub = true;
+    }
+
+    private string EffectiveForceLabel()
+    {
+        var runtime = Overrides.ForceProvider;
+        var appset = LlmOpts.Value.ForceProvider;
+        if (!string.IsNullOrWhiteSpace(runtime)) return $"{runtime} (runtime override)";
+        if (!string.IsNullOrWhiteSpace(appset))  return $"{appset} (appsettings)";
+        return "— none (per-agent config) —";
+    }
+
+    private MarkupString KeyState(string key)
+        => string.IsNullOrWhiteSpace(key)
+            ? new MarkupString("<span class=\"chip chip-err\">⊘ not set</span>")
+            : new MarkupString("<span class=\"chip chip-ok\">✓ set</span>");
+}

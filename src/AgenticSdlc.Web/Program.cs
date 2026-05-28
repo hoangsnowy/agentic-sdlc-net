@@ -1,10 +1,10 @@
 // AgenticSdlc.Web/Program.cs
-// Phase 7 — Realtime demo host (Blazor Server / InteractiveServer).
-// Reuses Infrastructure's LLM Gateway + 5 agents + PipelineOrchestrator as-is,
-// overriding only 2 things: the LLM source (to allow offline Demo mode) and the progress sink.
+// Blazor Server host for the Agent Studio. Composes the Infrastructure LLM Gateway + 5 agents +
+// PipelineOrchestrator with a circuit-scoped progress sink so the UI can render the run live.
 
 using AgenticSdlc.Application.Pipeline;
 using AgenticSdlc.Infrastructure.Agents;
+using AgenticSdlc.Infrastructure.Integration;
 using AgenticSdlc.Infrastructure.Llm;
 using AgenticSdlc.Infrastructure.Metrics;
 using AgenticSdlc.Infrastructure.Persistence;
@@ -12,7 +12,6 @@ using AgenticSdlc.Infrastructure.Validation;
 using AgenticSdlc.ServiceDefaults;
 using AgenticSdlc.Web.Components;
 using AgenticSdlc.Web.Services;
-using AgenticSdlc.Web.Services.Demo;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,21 +38,26 @@ builder.Services.AddAgents(builder.Configuration);
 // Persistence (Postgres). Without ConnectionStrings:DefaultConnection → no-op repos (in-memory).
 builder.Services.AddPersistence(builder.Configuration);
 
-// --- Overrides for the presentation layer ---
+// GitHub integration — IGitHubPrService for opening a PR with the generated code.
+builder.Services.AddGitHubIntegration();
 
-// 1) Demo-aware LLM source: UseDemo ⇒ returns canned JSON (runs offline, with the Quality Loop);
-//    otherwise ⇒ delegates to the real LlmClientFactory (Claude / Azure OpenAI per appsettings).
-builder.Services.AddSingleton<LlmClientFactory>();
-builder.Services.AddScoped<DemoRunContext>();
-builder.Services.AddScoped<DemoLlmClient>();
-builder.Services.AddScoped<ILlmClientFactory, DemoAwareLlmClientFactory>();
+// Build verifier — runs `dotnet build` on the generated code in a temp directory.
+builder.Services.AddBuildVerifier();
 
-// 2) Per-circuit progress sink — the orchestrator reports, the component listens then re-renders.
+// --- Presentation-layer scopes ---
+
+// Per-circuit progress sink — the orchestrator reports, the component listens then re-renders.
 builder.Services.AddScoped<CircuitPipelineProgress>();
 builder.Services.AddScoped<IPipelineProgressSink>(sp => sp.GetRequiredService<CircuitPipelineProgress>());
 
-// 3) Orchestration store (drag-and-drop editor graphs) — singleton, seeds + saves JSON.
+// Orchestration store (drag-and-drop editor graphs) — singleton, seeds + saves JSON.
 builder.Services.AddSingleton<AgenticSdlc.Web.Orchestrations.OrchestrationStore>();
+
+// Toast notification bus — any page can push, ToastHost listens.
+builder.Services.AddSingleton<AgenticSdlc.Web.Services.ToastService>();
+
+// Window manager — tracks open desktop-app windows.
+builder.Services.AddSingleton<AgenticSdlc.Web.Services.WindowManagerService>();
 
 var app = builder.Build();
 

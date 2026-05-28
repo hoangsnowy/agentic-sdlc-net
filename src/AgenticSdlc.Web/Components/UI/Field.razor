@@ -1,0 +1,20 @@
+@* Field — label + input wrapper with optional hint. *@
+
+<label class="field @(ExtraClass ?? "")">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <span class="field-label">@Label</span>
+    }
+    @ChildContent
+    @if (!string.IsNullOrEmpty(Hint))
+    {
+        <span class="field-hint">@Hint</span>
+    }
+</label>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Hint { get; set; }
+    [Parameter] public string? ExtraClass { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

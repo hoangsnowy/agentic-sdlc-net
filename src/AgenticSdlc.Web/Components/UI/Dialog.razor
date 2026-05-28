@@ -1,0 +1,38 @@
+@* Dialog — centered modal with backdrop. *@
+
+@if (Show)
+{
+    <div class="dialog-backdrop" @onclick="@HandleBackdropClick"></div>
+    <div class="dialog" style="width:@(Width)px; max-height:@MaxHeight;">
+        <div class="dialog-titlebar">
+            <span class="dialog-title">@Title</span>
+            <button class="window-close" @onclick="OnClose">×</button>
+        </div>
+        <div class="dialog-body">
+            @ChildContent
+        </div>
+        @if (Footer is not null)
+        {
+            <div class="dialog-footer">@Footer</div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public int Width { get; set; } = 480;
+    [Parameter] public string MaxHeight { get; set; } = "80vh";
+    [Parameter] public bool CloseOnBackdrop { get; set; } = true;
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+
+    private async Task HandleBackdropClick()
+    {
+        if (CloseOnBackdrop)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+}

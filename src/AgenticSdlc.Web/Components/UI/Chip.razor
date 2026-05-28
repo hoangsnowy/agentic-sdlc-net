@@ -1,0 +1,18 @@
+@* Chip — small inline status pill. *@
+
+<span class="chip chip-@Variant.ToString().ToLowerInvariant() @(ExtraClass ?? "")">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <span class="chip-ic">@Icon</span>
+    }
+    @ChildContent
+</span>
+
+@code {
+    public enum ChipVariant { Default, Ok, Warn, Err, Info, Brand }
+
+    [Parameter] public ChipVariant Variant { get; set; } = ChipVariant.Default;
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public string? ExtraClass { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
