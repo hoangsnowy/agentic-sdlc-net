@@ -1,113 +1,239 @@
+/* =================================================================
+   Design tokens — enterprise admin console, KDE Plasma Breeze leaning.
+   Two orthogonal axes:
+     data-theme     : light (default) | dark    — color tokens
+     data-wallpaper : enterprise-light (default) | enterprise-dark
+                    | aurora | midnight | sunset — wallpaper + glass
+   ================================================================= */
+
 :root {
-    /* ===== Surfaces — steel-blue enterprise palette ===== */
-    --bg: #eef2f7;            /* slate page bg */
-    --bg-2: #ffffff;          /* panel body */
-    --bg-3: #f4f6fa;          /* nested surface */
+    /* ----- Surfaces (Breeze Light) ----- */
+    --bg: #eef2f7;
+    --bg-2: #ffffff;
+    --bg-3: #f4f6fa;
     --bg-sunk: #e1e7ef;
     --bg-sidebar: #f7f9fc;
     --bg-topbar: #ffffff;
-    --bg-titlebar: linear-gradient(180deg, #f7f9fc 0%, #e8edf3 100%);
-    --bg-toolbar: linear-gradient(180deg, #fbfcfd 0%, #f1f4f8 100%);
-    --bg-statusbar: linear-gradient(180deg, #e8edf3, #dfe6ee);
+    --bg-titlebar: #f4f6fa;
+    --bg-toolbar: #f7f9fc;
+    --bg-statusbar: #eef2f7;
+    --surface-0: var(--bg);
+    --surface-1: var(--bg-2);
+    --surface-2: var(--bg-3);
+    --surface-3: var(--bg-sunk);
 
-    /* ===== Lines / borders ===== */
+    /* ----- Borders ----- */
     --line: #cfd6e0;
     --line-strong: #b6c0cc;
+    --border-subtle: var(--line);
+    --border-strong: var(--line-strong);
 
-    /* ===== Text ===== */
+    /* ----- Text ----- */
     --txt: #0f172a;
     --txt-soft: #334155;
     --txt-dim: #64748b;
     --txt-faint: #94a3b8;
     --txt-on-accent: #ffffff;
+    --text-primary: var(--txt);
+    --text-secondary: var(--txt-soft);
+    --text-tertiary: var(--txt-dim);
+    --text-disabled: var(--txt-faint);
 
-    /* ===== Brand + semantic ===== */
-    --accent: #2563eb;        /* blue-600 — info / links */
-    --accent-2: #7c3aed;      /* violet-600 — brand / primary CTA */
-    --accent-2-soft: #ede9fe;
+    /* ----- Accent — Breeze blue, single low-chroma ----- */
+    --accent: #3daee9;
+    --accent-hover: #2a93cc;
+    --accent-active: #1d7eb3;
+    --accent-soft: #d6ecf7;
+    --accent-2: var(--accent);        /* deprecated alias — use --accent */
+    --accent-2-soft: var(--accent-soft);
+
+    /* ----- State ----- */
     --ok: #16a34a;
     --warn: #d97706;
     --err: #dc2626;
     --idle: #cbd5e1;
+    --state-success: var(--ok);
+    --state-warning: var(--warn);
+    --state-danger: var(--err);
+    --state-info: var(--accent);
 
-    /* ===== Shadows — minimal, enterprise feel uses borders not shadows ===== */
+    /* ----- Focus ring ----- */
+    --focus-ring: 0 0 0 2px rgba(61,174,233,.55);
+    --focus-ring-offset: 1px;
+
+    /* ----- Elevation ----- */
+    --shadow-0: none;
     --shadow-1: 0 1px 0 rgba(15,23,42,.04);
-    --shadow-2: 0 2px 4px rgba(15,23,42,.06);
-    --shadow-3: 0 8px 20px rgba(15,23,42,.10);
+    --shadow-2: 0 2px 4px rgba(15,23,42,.06), 0 1px 0 rgba(15,23,42,.04);
+    --shadow-3: 0 8px 20px rgba(15,23,42,.10), 0 2px 4px rgba(15,23,42,.06);
+    --shadow-4: 0 24px 48px -8px rgba(15,23,42,.18), 0 8px 16px rgba(15,23,42,.08);
     --shadow-inset: inset 0 1px 0 rgba(255,255,255,.6);
+    --shadow-window-focused: 0 16px 32px -8px rgba(15,23,42,.32), 0 6px 12px rgba(15,23,42,.14), 0 0 0 1px var(--accent);
+    --shadow-window-unfocused: 0 8px 16px rgba(15,23,42,.16), 0 0 0 1px rgba(15,23,42,.10);
 
-    /* ===== Radii — tighter, classical ===== */
+    /* ----- Radii (Breeze keeps things small) ----- */
     --r-1: 2px;  --r-2: 4px;  --r-3: 5px;  --r-4: 6px;  --r-5: 8px;
+    --radius-none: 0;
+    --radius-sm: 4px;
+    --radius-md: 6px;
 
-    /* ===== Spacing scale (4-base) ===== */
+    /* ----- Spacing (4-base) ----- */
     --s-1: 4px;  --s-2: 8px;  --s-3: 12px;  --s-4: 16px;
     --s-5: 20px; --s-6: 24px; --s-8: 32px;  --s-10: 40px;
+    --space-0: 0;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-7: 40px;
+    --space-8: 48px;
 
-    /* ===== Type ===== */
-    --font: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    /* ----- Typography ----- */
+    --font: "Inter", "Noto Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
     --mono: "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, ui-monospace, monospace;
+    --font-sans: var(--font);
+    --font-mono: var(--mono);
+    --fs-xs: 11px;
+    --fs-sm: 12px;
+    --fs-base: 13px;
+    --fs-md: 14px;
+    --fs-lg: 16px;
+    --fs-xl: 20px;
+    --fs-2xl: 28px;
+    --lh-tight: 1.25;
+    --lh-normal: 1.5;
+    --fw-regular: 400;
+    --fw-medium: 500;
+    --fw-semibold: 600;
 
-    /* ===== Layout constants ===== */
+    /* ----- Motion ----- */
+    --duration-fast: 80ms;
+    --duration-base: 160ms;
+    --duration-slow: 240ms;
+    --ease-standard: cubic-bezier(.2, 0, 0, 1);
+    --ease-emphasized: cubic-bezier(.05, .7, .1, 1);
+
+    /* ----- Glass + wallpaper (overridden by [data-wallpaper]) ----- */
+    --glass-blur: 0px;
+    --glass-saturate: 100%;
+    --wallpaper-bg: linear-gradient(180deg, #e8eef5 0%, #d4dde8 100%);
+    --wallpaper-animation: none;
+
+    /* ----- Layout constants ----- */
     --shell-sidebar-w: 232px;
     --shell-topbar-h: 56px;
 }
 
 :root[data-theme="dark"] {
-    --bg: #0c1117;
-    --bg-2: #121821;
-    --bg-3: #1a2230;
-    --bg-sunk: #0a0f15;
-    --bg-sidebar: #0f151c;
-    --bg-topbar: #0f151c;
-    --bg-titlebar: linear-gradient(180deg, #1a2230 0%, #121821 100%);
-    --bg-toolbar: linear-gradient(180deg, #161d27 0%, #121821 100%);
-    --bg-statusbar: linear-gradient(180deg, #121821, #0c1117);
-    --line: #232b36;
-    --line-strong: #33414f;
-    --txt: #e6edf3;
-    --txt-soft: #c2c9d2;
-    --txt-dim: #8893a3;
-    --txt-faint: #6b7888;
-    --accent: #5cc8ff;
-    --accent-2: #a78bfa;
-    --accent-2-soft: #2a1c52;
-    --ok: #3fb950;
-    --warn: #d29922;
-    --err: #f85149;
-    --idle: #3a4654;
+    /* Breeze Dark surfaces */
+    --bg: #1b1e23;
+    --bg-2: #232629;
+    --bg-3: #2a2e32;
+    --bg-sunk: #16191c;
+    --bg-sidebar: #1b1e23;
+    --bg-topbar: #1b1e23;
+    --bg-titlebar: #2a2e32;
+    --bg-toolbar: #232629;
+    --bg-statusbar: #1b1e23;
+
+    --line: #3a3f44;
+    --line-strong: #4e555c;
+
+    --txt: #eff0f1;
+    --txt-soft: #bdc3c7;
+    --txt-dim: #7f8c8d;
+    --txt-faint: #5d646b;
+
+    --accent: #3daee9;
+    --accent-hover: #4cbcf2;
+    --accent-active: #2196e1;
+    --accent-soft: #1d3a4d;
+
+    --ok: #2ecc71;
+    --warn: #f39c12;
+    --err: #e74c3c;
+    --idle: #4e555c;
+
+    --focus-ring: 0 0 0 2px rgba(61,174,233,.70);
+
+    --shadow-0: none;
     --shadow-1: 0 1px 2px rgba(0,0,0,.30);
     --shadow-2: 0 4px 12px rgba(0,0,0,.35);
     --shadow-3: 0 16px 40px rgba(0,0,0,.45);
+    --shadow-4: 0 24px 56px rgba(0,0,0,.55);
+    --shadow-inset: inset 0 1px 0 rgba(255,255,255,.06);
+    --shadow-window-focused: 0 16px 32px -8px rgba(0,0,0,.60), 0 6px 12px rgba(0,0,0,.40), 0 0 0 1px var(--accent);
+    --shadow-window-unfocused: 0 8px 16px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.06);
+
+    --wallpaper-bg: linear-gradient(180deg, #1a1d22 0%, #0e1014 100%);
 }
 
-* { box-sizing: border-box; }
-
-html, body {
-    margin: 0;
-    padding: 0;
-    color: var(--txt);
-    font-family: var(--font);
-    font-size: 13px;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    min-height: 100vh;
-    background: #0a0a1a;
+/* ===== Wallpaper presets — orthogonal to data-theme ===== */
+:root[data-wallpaper="enterprise-light"] {
+    --wallpaper-bg: linear-gradient(180deg, #e8eef5 0%, #d4dde8 100%);
+    --wallpaper-animation: none;
 }
-
-/* Layered mesh wallpaper — distro-grade depth */
-body::before {
-    content: "";
-    position: fixed; inset: 0;
-    z-index: -2;
-    background:
+:root[data-wallpaper="enterprise-dark"] {
+    --wallpaper-bg: linear-gradient(180deg, #1a1d22 0%, #0e1014 100%);
+    --wallpaper-animation: none;
+}
+:root[data-wallpaper="aurora"] {
+    --wallpaper-bg:
         radial-gradient(60vw 50vh at 12% 8%,  rgba(168, 85,247,.45) 0%, transparent 55%),
         radial-gradient(55vw 45vh at 92% 14%, rgba( 56,189,248,.40) 0%, transparent 55%),
         radial-gradient(55vw 50vh at 78% 92%, rgba(124, 58,237,.42) 0%, transparent 55%),
         radial-gradient(45vw 38vh at 18% 88%, rgba( 34,211,238,.36) 0%, transparent 55%),
         radial-gradient(50vw 40vh at 55% 50%, rgba( 99,102,241,.22) 0%, transparent 60%),
         linear-gradient(135deg, #0c0a1f 0%, #181b3a 50%, #0d1430 100%);
-    animation: bg-drift 30s ease-in-out infinite alternate;
+    --wallpaper-animation: bg-drift 30s ease-in-out infinite alternate;
+}
+:root[data-wallpaper="midnight"] {
+    --wallpaper-bg:
+        radial-gradient(70vw 50vh at 20% 10%, rgba(59,130,246,.30) 0%, transparent 55%),
+        radial-gradient(60vw 50vh at 80% 90%, rgba(30,64,175,.30) 0%, transparent 55%),
+        linear-gradient(135deg, #0b1530 0%, #0a1024 100%);
+    --wallpaper-animation: none;
+}
+:root[data-wallpaper="sunset"] {
+    --wallpaper-bg:
+        radial-gradient(70vw 50vh at 15% 15%, rgba(244,114,182,.32) 0%, transparent 55%),
+        radial-gradient(60vw 50vh at 85% 85%, rgba(251,146,60,.32) 0%, transparent 55%),
+        linear-gradient(135deg, #2a0e2e 0%, #3d1424 100%);
+    --wallpaper-animation: none;
+}
+
+* { box-sizing: border-box; }
+
+/* ===== Icon — mono SVG primitive (Components/UI/Icon.razor) ===== */
+.icon {
+    display: inline-block;
+    vertical-align: -0.15em;
+    flex-shrink: 0;
+    color: inherit;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    color: var(--txt);
+    font-family: var(--font);
+    font-size: var(--fs-base);
+    line-height: var(--lh-normal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+    background: var(--bg);
+}
+
+/* Wallpaper layer driven by --wallpaper-bg (per data-wallpaper) */
+body::before {
+    content: "";
+    position: fixed; inset: 0;
+    z-index: -2;
+    background: var(--wallpaper-bg);
+    animation: var(--wallpaper-animation);
 }
 @keyframes bg-drift {
     from { transform: scale(1) translate(0, 0); }
@@ -1231,19 +1357,15 @@ select {
 
 .appwin {
     position: fixed;
-    background: rgba(255,255,255,.92);
-    backdrop-filter: blur(28px) saturate(200%);
-    -webkit-backdrop-filter: blur(28px) saturate(200%);
-    border: 1px solid rgba(255,255,255,.45);
-    border-radius: 10px;
-    box-shadow:
-        0 50px 100px -20px rgba(0,0,0,.60),
-        0 30px 60px -30px rgba(0,0,0,.40),
-        0 0 0 1px rgba(15,23,42,.18),
-        inset 0 1px 0 rgba(255,255,255,.50);
+    background: var(--bg-2);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-window-focused);
     display: flex; flex-direction: column;
     overflow: hidden;
-    animation: appwin-in .22s cubic-bezier(.34,1.56,.64,1);
+    animation: appwin-in var(--duration-base) var(--ease-standard);
     transform-origin: center 30%;
 }
 @keyframes appwin-in {
