@@ -33,22 +33,55 @@
     </aside>
 
     <div class="shell-pane">
-        <header class="shell-topbar">
-            <div class="topbar-spacer"></div>
-            <button class="theme-btn" @onclick="ToggleTheme" title="Toggle light/dark theme">
-                @(_theme == "light" ? "🌙 Dark" : "☀ Light")
+
+        <!-- Top menu bar (File / Edit / View / Tools / Help) -->
+        <div class="menubar">
+            <span class="menu-item">File</span>
+            <span class="menu-item">Edit</span>
+            <span class="menu-item" @onclick="ToggleTheme" title="Toggle theme">View</span>
+            <span class="menu-item">Tools</span>
+            <span class="menu-item">Help</span>
+            <div class="menubar-spacer"></div>
+            <button class="theme-btn" @onclick="ToggleTheme" title="Toggle theme">
+                @(_theme == "light" ? "🌙" : "☀")
             </button>
-        </header>
+        </div>
+
+        <!-- Toolbar (icon strip) -->
+        <div class="toolbar-strip">
+            <button class="tbtn" title="New" @onclick="@(() => Nav.NavigateTo("/orchestration"))">⊕ New</button>
+            <button class="tbtn" title="Pipeline" @onclick="@(() => Nav.NavigateTo("/"))">▶ Run</button>
+            <span class="tbtn-sep"></span>
+            <button class="tbtn" title="Settings" @onclick="@(() => Nav.NavigateTo("/settings"))">⚙ Config</button>
+            <span class="tbtn-sep"></span>
+            <span class="tbtn-lbl">Path:</span>
+            <span class="urlbar">@CurrentPath</span>
+        </div>
 
         <main class="shell-main">
             @Body
         </main>
+
+        <!-- Bottom status bar -->
+        <footer class="statusbar">
+            <span>Ready</span>
+            <span class="sb-sep"></span>
+            <span><span class="sb-dot ok"></span> Live · Anthropic + Azure</span>
+            <span class="sb-sep"></span>
+            <span>NMax 3</span>
+            <span class="sb-spacer"></span>
+            <span>v1.0 · agentic-sdlc-net</span>
+        </footer>
     </div>
 
 </div>
 
 @code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
     private string _theme = "light";
+
+    private string CurrentPath => new Uri(Nav.Uri).AbsolutePath;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
