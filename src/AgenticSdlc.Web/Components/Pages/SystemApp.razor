@@ -1,72 +1,97 @@
-@* SystemApp — bundle of OS-style controls (About / Appearance / Session). Hosted in a Window. *@
+@* SystemApp — macOS System Settings / GNOME Settings style: sidebar categories + content pane. *@
 
 @using AgenticSdlc.Web.Services
 @inject ToastService Toasts
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 
-<div class="sys-app">
-    <div class="sys-tabs">
-        <button class="sys-tab @(_tab == "general" ? "active" : "")" @onclick="@(() => _tab = "general")">General</button>
-        <button class="sys-tab @(_tab == "appearance" ? "active" : "")" @onclick="@(() => _tab = "appearance")">Appearance</button>
-        <button class="sys-tab @(_tab == "about" ? "active" : "")" @onclick="@(() => _tab = "about")">About</button>
-        <button class="sys-tab @(_tab == "session" ? "active" : "")" @onclick="@(() => _tab = "session")">Session</button>
-    </div>
+<div class="prefs">
+    <aside class="prefs-side">
+        <div class="prefs-side-head">System</div>
+        <button class="prefs-cat @(_tab == "general"    ? "active" : "")" @onclick="@(() => _tab = "general")"><span class="prefs-cat-ic">⚙</span> General</button>
+        <button class="prefs-cat @(_tab == "appearance" ? "active" : "")" @onclick="@(() => _tab = "appearance")"><span class="prefs-cat-ic">🎨</span> Appearance</button>
+        <button class="prefs-cat @(_tab == "notifs"     ? "active" : "")" @onclick="@(() => _tab = "notifs")"><span class="prefs-cat-ic">🔔</span> Notifications</button>
+        <button class="prefs-cat @(_tab == "about"      ? "active" : "")" @onclick="@(() => _tab = "about")"><span class="prefs-cat-ic">ℹ</span> About</button>
+        <button class="prefs-cat @(_tab == "session"    ? "active" : "")" @onclick="@(() => _tab = "session")"><span class="prefs-cat-ic">⏻</span> Session</button>
+    </aside>
 
-    <div class="sys-body">
+    <div class="prefs-content">
         @switch (_tab)
         {
             case "general":
-                <Panel Title="Notifications">
-                    <Field Label="Show toast notifications">
-                        <Toggle Checked="_notifs" CheckedChanged="@((bool v) => _notifs = v)" />
-                    </Field>
-                    <Field Label="Demo notification">
-                        <Btn OnClick="@(() => Toasts.Show("System", "Hello from System Settings", ToastKind.Info))">Send</Btn>
-                    </Field>
-                </Panel>
-                <Panel Title="Workspace">
-                    <Field Label="Focus mode (mute non-critical notifications)">
-                        <Toggle Checked="_focus" CheckedChanged="@((bool v) => _focus = v)" />
-                    </Field>
-                </Panel>
+                <div class="prefs-section">
+                    <h2 class="prefs-h">General</h2>
+                    <p class="prefs-sub">Workspace + focus behaviour.</p>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Focus mode</strong><br /><span class="prefs-hint">Mute non-critical notifications.</span></div>
+                    <Toggle Checked="_focus" CheckedChanged="@((bool v) => _focus = v)" />
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Auto-minimize on blur</strong><br /><span class="prefs-hint">Send inactive windows to the dock.</span></div>
+                    <Toggle Checked="_autoMin" CheckedChanged="@((bool v) => _autoMin = v)" />
+                </div>
                 break;
             case "appearance":
-                <Panel Title="Wallpaper">
-                    <Field Label="Background style">
-                        <select @bind="_wall">
-                            <option value="aurora">Aurora — violet × cyan × sky</option>
-                            <option value="midnight">Midnight — deep navy</option>
-                            <option value="sunset">Sunset — orange × magenta</option>
-                        </select>
-                    </Field>
-                    <Field Label="Glass strength">
+                <div class="prefs-section">
+                    <h2 class="prefs-h">Appearance</h2>
+                    <p class="prefs-sub">Wallpaper + window styling.</p>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Wallpaper</strong><br /><span class="prefs-hint">Background mesh preset.</span></div>
+                    <select @bind="_wall" class="prefs-select">
+                        <option value="aurora">Aurora — violet × cyan</option>
+                        <option value="midnight">Midnight — deep navy</option>
+                        <option value="sunset">Sunset — orange × magenta</option>
+                    </select>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Glass strength</strong><br /><span class="prefs-hint">Backdrop blur intensity.</span></div>
+                    <div class="prefs-range">
                         <input type="range" min="0" max="100" value="@_glass" @oninput="@((ChangeEventArgs e) => _glass = int.Parse(e.Value!.ToString()!))" />
-                        <span class="muted">@_glass%</span>
-                    </Field>
-                </Panel>
+                        <span class="prefs-range-val">@_glass%</span>
+                    </div>
+                </div>
+                break;
+            case "notifs":
+                <div class="prefs-section">
+                    <h2 class="prefs-h">Notifications</h2>
+                    <p class="prefs-sub">Toast banners shown in the top-right.</p>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Show toasts</strong></div>
+                    <Toggle Checked="_notifs" CheckedChanged="@((bool v) => _notifs = v)" />
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Send a test notification</strong></div>
+                    <Btn OnClick="@(() => Toasts.Show("System", "Hello from System Settings", ToastKind.Info))">Send test</Btn>
+                </div>
                 break;
             case "about":
-                <Panel Title="AgentOS">
-                    <p>A .NET multi-agent AI framework for the software development lifecycle.</p>
-                    <table class="about-tbl">
-                        <tr><th>Version</th><td>1.0</td></tr>
-                        <tr><th>Runtime</th><td>.NET 10</td></tr>
-                        <tr><th>License</th><td>MIT</td></tr>
-                        <tr><th>Source</th><td><a href="https://github.com/hoangsnowy/agentic-sdlc-net" target="_blank">github.com/hoangsnowy/agentic-sdlc-net</a></td></tr>
-                    </table>
-                </Panel>
+                <div class="prefs-section">
+                    <h2 class="prefs-h">About AgentOS</h2>
+                    <p class="prefs-sub">A .NET multi-agent AI framework for the SDLC.</p>
+                </div>
+                <table class="prefs-tbl">
+                    <tr><th>Version</th><td>1.0</td></tr>
+                    <tr><th>Runtime</th><td>.NET 10</td></tr>
+                    <tr><th>License</th><td>MIT</td></tr>
+                    <tr><th>Source</th><td><a href="https://github.com/hoangsnowy/agentic-sdlc-net" target="_blank">github.com/hoangsnowy/agentic-sdlc-net</a></td></tr>
+                </table>
                 break;
             case "session":
-                <Panel Title="Session">
-                    <p class="muted">Sign-in is local-only via <code>localStorage</code>.</p>
-                    <Field Label="Lock and return to splash">
-                        <Btn OnClick="Lock">🔒 Lock</Btn>
-                    </Field>
-                    <Field Label="Sign out (clear stored credentials)">
-                        <Btn Variant="Btn.ButtonVariant.Danger" OnClick="SignOut">⏻ Sign out</Btn>
-                    </Field>
-                </Panel>
+                <div class="prefs-section">
+                    <h2 class="prefs-h">Session</h2>
+                    <p class="prefs-sub">Local sign-in stored in <code>localStorage</code>.</p>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Lock</strong><br /><span class="prefs-hint">Return to the splash screen.</span></div>
+                    <Btn OnClick="Lock">🔒 Lock</Btn>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Sign out</strong><br /><span class="prefs-hint">Clear stored credentials.</span></div>
+                    <Btn Variant="Btn.ButtonVariant.Danger" OnClick="SignOut">⏻ Sign out</Btn>
+                </div>
                 break;
         }
     </div>
@@ -76,6 +101,7 @@
     private string _tab = "general";
     private bool _notifs = true;
     private bool _focus;
+    private bool _autoMin;
     private string _wall = "aurora";
     private int _glass = 60;
 

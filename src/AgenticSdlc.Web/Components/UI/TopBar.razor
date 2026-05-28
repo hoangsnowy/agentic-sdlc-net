@@ -1,8 +1,10 @@
-@* TopBar — GNOME / KDE Plasma style top panel. Brand + active window + tray. *@
+@* TopBar — GNOME / KDE Plasma top panel with dropdown menus. *@
 
 @using AgenticSdlc.Web.Services
 @inject WindowManagerService WM
+@inject ToastService Toasts
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 @implements IDisposable
 
 <div class="topbar">
@@ -20,20 +22,55 @@
             <span class="tb-dot ok"></span> Live
         </span>
         <span class="tb-sep"></span>
-        <span class="tb-clock" title="@_today">@_now</span>
+
+        <button class="tb-trigger tb-clock @(_clockOpen ? "open" : "")" title="@_today"
+                @onclick="ToggleClock" @onclick:stopPropagation="true">
+            @_now
+        </button>
+
         <span class="tb-sep"></span>
-        <div class="tb-user" title="@(_user ?? "guest")">
+
+        <button class="tb-trigger tb-user @(_userOpen ? "open" : "")" title="@(_user ?? "guest")"
+                @onclick="ToggleUser" @onclick:stopPropagation="true">
             <span class="tb-avatar">@AvatarLetter</span>
             <span class="tb-name">@(_user ?? "guest")</span>
-        </div>
+            <span class="tb-caret">▾</span>
+        </button>
     </div>
 </div>
+
+<Dropdown Show="_clockOpen" ExtraClass="dropdown-clock" OnClose="@(() => _clockOpen = false)">
+    <div class="dd-clock-big">@DateTime.Now.ToString("HH:mm:ss")</div>
+    <div class="dd-clock-date">@DateTime.Now.ToString("dddd")</div>
+    <div class="dd-clock-sub">@DateTime.Now.ToString("d MMMM yyyy")</div>
+    <div class="dd-sep"></div>
+    <button class="dd-item" @onclick="OpenSystem"><span class="dd-ic">⏱</span> Date &amp; time settings</button>
+</Dropdown>
+
+<Dropdown Show="_userOpen" ExtraClass="dropdown-user" OnClose="@(() => _userOpen = false)">
+    <div class="dd-user-head">
+        <span class="dd-user-avatar">@AvatarLetter</span>
+        <div>
+            <div class="dd-user-name">@(_user ?? "guest")</div>
+            <div class="dd-user-role">Local account</div>
+        </div>
+    </div>
+    <div class="dd-sep"></div>
+    <button class="dd-item" @onclick="OpenSystem"><span class="dd-ic">🛠</span> System settings</button>
+    <button class="dd-item" @onclick="OpenSettings"><span class="dd-ic">⚙</span> App settings</button>
+    <div class="dd-sep"></div>
+    <button class="dd-item" @onclick="Lock"><span class="dd-ic">🔒</span> Lock screen</button>
+    <button class="dd-item dd-danger" @onclick="SignOut"><span class="dd-ic">⏻</span> Sign out</button>
+</Dropdown>
 
 @code {
     private string _now = "";
     private string _today = "";
     private string? _user;
     private string AvatarLetter => string.IsNullOrEmpty(_user) ? "?" : _user[..1].ToUpperInvariant();
+
+    private bool _userOpen;
+    private bool _clockOpen;
 
     private System.Threading.Timer? _timer;
 
@@ -77,6 +114,34 @@
         var now = DateTime.Now;
         _now = now.ToString("HH:mm:ss");
         _today = now.ToString("dddd, d MMMM yyyy");
+    }
+
+    private void ToggleUser()  { _userOpen = !_userOpen; _clockOpen = false; }
+    private void ToggleClock() { _clockOpen = !_clockOpen; _userOpen = false; }
+
+    private void OpenSystem()
+    {
+        WM.OpenApp("system", "System", "🛠", 700, 560);
+        _userOpen = _clockOpen = false;
+    }
+
+    private void OpenSettings()
+    {
+        WM.OpenApp("settings", "Settings", "⚙", 760, 600);
+        _userOpen = false;
+    }
+
+    private async Task Lock()
+    {
+        await JS.InvokeVoidAsync("localStorage.removeItem", "agentic-signed-in");
+        Nav.NavigateTo(Nav.Uri, forceLoad: true);
+    }
+
+    private async Task SignOut()
+    {
+        await JS.InvokeVoidAsync("localStorage.removeItem", "agentic-signed-in");
+        Toasts.Show("Signed out", "Refresh to sign in again.", ToastKind.Info);
+        _userOpen = false;
     }
 
     public void Dispose()
