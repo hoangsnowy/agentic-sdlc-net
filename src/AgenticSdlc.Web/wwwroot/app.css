@@ -1761,6 +1761,93 @@ select {
 .prefs-details { margin-top: 14px; }
 .prefs-details summary { cursor: pointer; font-size: 12.5px; color: var(--accent); font-weight: 600; }
 .prefs-details pre { margin-top: 6px; }
+
+/* =================================================================
+   Appins — in-window desktop app shell (toolbar + content + statusbar)
+   ================================================================= */
+.appins {
+    display: flex; flex-direction: column;
+    height: 100%; min-height: 0;
+}
+
+.app-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+    padding: 6px 10px;
+    background: var(--bg-toolbar);
+    border-bottom: 1px solid var(--line);
+    flex: none;
+}
+.app-toolbar-left  { display: flex; align-items: center; gap: 8px; }
+.app-toolbar-right { display: flex; align-items: center; gap: 6px; }
+
+.app-tb-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 11px;
+    background: linear-gradient(180deg, #ffffff, #f1f4f8);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-3);
+    color: var(--txt);
+    font-family: inherit; font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    box-shadow: var(--shadow-inset);
+}
+.app-tb-btn:hover:not(:disabled) { background: linear-gradient(180deg, #ffffff, #e8edf3); border-color: #95a3b3; }
+.app-tb-btn:active:not(:disabled) { background: #e1e7ef; box-shadow: inset 0 1px 2px rgba(15,23,42,.10); }
+.app-tb-btn:disabled { opacity: .55; cursor: not-allowed; }
+.app-tb-btn.primary {
+    background: linear-gradient(180deg, #4a8cff, #2563eb);
+    border-color: #1d4ed8; color: #fff;
+    text-shadow: 0 1px 0 rgba(0,0,0,.15);
+    font-weight: 600;
+}
+.app-tb-btn.primary:hover:not(:disabled) { background: linear-gradient(180deg, #5a98ff, #1d4ed8); }
+.app-tb-btn.primary:active:not(:disabled) { background: #1d4ed8; }
+.app-tb-ic { font-size: 12px; line-height: 1; }
+.app-tb-sep { width: 1px; height: 18px; background: var(--line-strong); margin: 0 4px; }
+.app-tb-lbl { font-size: 11.5px; color: var(--txt-dim); margin: 0 2px; }
+.app-tb-num {
+    width: 48px; padding: 4px 6px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-3);
+    font-family: inherit; font-size: 12px;
+    color: var(--txt);
+}
+
+.appins > .studio-grid {
+    flex: 1; min-height: 0;
+    overflow: auto;
+    padding: 12px 14px;
+    margin: 0;
+}
+
+.app-statusbar {
+    display: flex; align-items: center;
+    gap: 10px;
+    padding: 5px 12px;
+    background: var(--bg-statusbar);
+    border-top: 1px solid var(--line-strong);
+    color: var(--txt-soft);
+    font-size: 11.5px;
+    flex: none;
+}
+.asb-item { display: inline-flex; align-items: center; gap: 4px; }
+.asb-item strong { color: var(--txt); font-variant-numeric: tabular-nums; }
+.asb-sub { color: var(--txt-dim); }
+.asb-sep { width: 1px; height: 14px; background: var(--line-strong); }
+.asb-spacer { flex: 1; }
+.asb-idle { color: var(--txt-dim); }
+.asb-done { color: var(--ok); font-weight: 600; }
+.asb-warn { color: var(--warn); font-weight: 600; }
+.asb-err  { color: var(--err); font-weight: 600; }
+.asb-live { color: var(--accent); font-weight: 600; }
+.asb-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px rgba(74,140,255,.80);
+    animation: dot-pulse 1.2s ease-in-out infinite;
+}
 .topbar-spacer { flex: 1; }
 .theme-btn {
     background: linear-gradient(180deg, #ffffff, #f1f4f8);

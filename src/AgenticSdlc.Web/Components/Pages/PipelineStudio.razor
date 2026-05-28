@@ -9,69 +9,34 @@
 @inject AgenticSdlc.Application.Integration.IBuildVerifier BuildVerifier
 @implements IDisposable
 
-<PageTitle>Pipeline — Agentic SDLC</PageTitle>
+<PageTitle>Pipeline — AgentOS</PageTitle>
 
-<div class="page-head">
-    <h1 class="page-title">Pipeline</h1>
-    <p class="page-sub">Paste a user story below — five agents produce spec, code, tests, and a QA review.</p>
-</div>
+<div class="appins">
 
-<!-- ============ STATUS BAR (mode · persistence · settings) ============ -->
-<div class="status-bar">
-    <div class="status-chips">
-        <span class="status-chip mode-live">⚡ Live · @ActiveProvider</span>
-
+<div class="app-toolbar">
+    <div class="app-toolbar-left">
+        <button class="app-tb-btn primary" @onclick="RunAsync" disabled="@(_running || string.IsNullOrWhiteSpace(_description))" title="Run pipeline">
+            <span class="app-tb-ic">▶</span> @(_running ? "Running…" : "Run")
+        </button>
+        @if (_running)
+        {
+            <button class="app-tb-btn" @onclick="Cancel" title="Cancel"><span class="app-tb-ic">⏹</span> Cancel</button>
+        }
+        <span class="app-tb-sep"></span>
+        <span class="app-tb-lbl">NMax</span>
+        <input type="number" min="1" max="5" @bind="_nmax" class="app-tb-num" />
+    </div>
+    <div class="app-toolbar-right">
+        <span class="status-chip mode-live"><span class="tb-dot ok"></span> @ActiveProvider</span>
         @if (_dbConnected)
         {
-            <span class="status-chip db-on">🗄 Postgres connected</span>
+            <span class="status-chip db-on">🗄 Postgres</span>
         }
         else
         {
-            <span class="status-chip db-off">⊘ Stateless (no DB)</span>
+            <span class="status-chip db-off">⊘ Stateless</span>
         }
     </div>
-    <a class="settings-link" href="/settings" title="Configure providers + API keys">⚙ Settings →</a>
-</div>
-
-<!-- ============ ARCHITECTURE OVERVIEW ============ -->
-<div class="card arch">
-    <div class="arch-head">
-        <div>
-            <h2>Turn a user story into a reviewed code scaffold</h2>
-            <p class="arch-tagline muted">Paste a story below. An <strong>Orchestrator</strong> hands it to four specialist agents (Requirement → Coding → Testing); the <strong>QA agent</strong> scores requirement–code–test consistency and loops until consistent or <code>NMax</code>. <strong>Hybrid LLM</strong>: Anthropic Claude + Azure OpenAI, one model per agent. Output: structured spec, C# code, xUnit tests + QA scorecard.</p>
-        </div>
-        <a class="arch-designer" href="/orchestration">Workflow designer →</a>
-    </div>
-
-    <div class="steps-row">
-        <div class="step-pill"><span class="num">1</span> Paste a user story below</div>
-        <div class="step-pill"><span class="num">2</span> Click <strong>Run pipeline</strong></div>
-        <div class="step-pill"><span class="num">3</span> Review spec, code, tests, QA</div>
-    </div>
-
-    <div class="arch-flow">
-        <div class="arch-node leader">
-            <span class="an-role">◆ Orchestrator</span>
-            <span class="an-tag">Leader</span>
-            <span class="prov anthropic">Claude Haiku 4.5</span>
-        </div>
-        <span class="arch-feed">assigns ▸</span>
-
-        <div class="arch-chain">
-            <div class="arch-node"><span class="an-role">R · Requirement</span><span class="prov anthropic">Claude Sonnet 4</span></div>
-            <span class="arch-arr">→</span>
-            <div class="arch-node"><span class="an-role">C · Coding</span><span class="prov azure">Azure GPT-4.1</span></div>
-            <span class="arch-arr">→</span>
-            <div class="arch-node"><span class="an-role">T · Testing</span><span class="prov azure">Azure GPT-4o-mini</span></div>
-            <span class="arch-arr">→</span>
-            <div class="arch-node qa"><span class="an-role">Q · QA</span><span class="prov anthropic">Claude Haiku 4.5</span></div>
-        </div>
-
-        <span class="arch-feed">▸ aggregates</span>
-        <div class="arch-node agg"><span class="an-role">Σ Aggregate</span></div>
-    </div>
-
-    <div class="arch-loop">↺ <strong>Quality Loop</strong> — when QA finds the code inconsistent with the requirement, the Orchestrator re-runs Coding → Testing → QA, up to <code>NMax</code> iterations.</div>
 </div>
 
 <div class="studio-grid">
@@ -326,6 +291,42 @@
             </div>
         }
     </div>
+</div>
+
+<div class="app-statusbar">
+    <span class="asb-item"><strong>@(_tokIn + _tokOut)</strong> tok <span class="asb-sub">(@_tokIn↑ / @_tokOut↓)</span></span>
+    <span class="asb-sep"></span>
+    <span class="asb-item"><strong>$@_cost.ToString("0.0000")</strong> cost</span>
+    <span class="asb-sep"></span>
+    <span class="asb-item"><strong>@((_latencyMs / 1000.0).ToString("0.0"))s</strong> latency</span>
+    <span class="asb-sep"></span>
+    <span class="asb-item"><strong>@_qaRounds.Count</strong> QA rounds</span>
+    <span class="asb-spacer"></span>
+    @if (_running)
+    {
+        <span class="asb-item asb-live"><span class="asb-dot"></span> Running…</span>
+    }
+    else if (_result is not null)
+    {
+        @if (_finalStatus == PipelineStatus.Done)
+        {
+            <span class="asb-item asb-done">✓ Complete</span>
+        }
+        else if (_finalStatus == PipelineStatus.MaxIterationReached)
+        {
+            <span class="asb-item asb-warn">⚠ NMax reached</span>
+        }
+        else
+        {
+            <span class="asb-item asb-err">✕ Failed</span>
+        }
+    }
+    else
+    {
+        <span class="asb-item asb-idle">Ready</span>
+    }
+</div>
+
 </div>
 
 @code {
