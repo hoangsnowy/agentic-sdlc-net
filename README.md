@@ -141,6 +141,13 @@ curl -X POST http://localhost:5080/pipeline \
 - [x] Phase 6 — Azure deployment (Container Apps + App Insights)
 - [x] Phase 7 — Agent Studio (Blazor Server, realtime UI + orchestration editor) — see [docs/PHASE_7.md](docs/PHASE_7.md)
 
+### Long-term direction (post-thesis)
+
+Beyond the thesis, the intent is to grow this prototype into an **open-source, .NET-native agentic
+framework** (hybrid: keep the .NET core, reuse Semantic Kernel + MCP, build the novel runtime / governance /
+evidence layers). The phased plan — from pre-defense hardening to platform-v2 to OSS maturity — lives in
+[docs/ROADMAP_PLATFORM_V2.md](docs/ROADMAP_PLATFORM_V2.md). The prototype stays frozen until tagged `v1.0-thesis`.
+
 ---
 
 ## Thesis references

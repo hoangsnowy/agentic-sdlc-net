@@ -14,6 +14,13 @@ public sealed class LlmOptions
     /// <summary>Default provider: <c>"Claude"</c>, <c>"AzureOpenAI"</c>, or <c>"Mock"</c>.</summary>
     public string Provider { get; set; } = "Mock";
 
+    /// <summary>
+    /// Optional. When set (e.g. <c>"AzureOpenAI"</c>), every agent uses this provider regardless of its
+    /// per-agent <c>Agents:&lt;Name&gt;:Provider</c>. Lets you run the whole pipeline on one provider
+    /// (e.g. Azure-only, no Anthropic key needed). Leave empty/null for the per-agent hybrid configuration.
+    /// </summary>
+    public string? ForceProvider { get; set; }
+
     /// <summary>Claude (Anthropic) client configuration.</summary>
     public ClaudeOptions Claude { get; set; } = new();
 

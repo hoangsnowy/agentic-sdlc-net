@@ -41,17 +41,20 @@ public sealed class LlmClientFactory : ILlmClientFactory
     /// <inheritdoc />
     public ILlmClient Create(string providerName)
     {
-        if (string.IsNullOrWhiteSpace(providerName))
+        // Llm:ForceProvider (when set) overrides the per-agent provider — e.g. run the whole pipeline on Azure only.
+        var effective = string.IsNullOrWhiteSpace(_options.ForceProvider) ? providerName : _options.ForceProvider;
+        if (string.IsNullOrWhiteSpace(effective))
         {
             throw new ArgumentException("Provider name must not be empty.", nameof(providerName));
         }
 
-        return providerName.Trim().ToUpperInvariant() switch
+        return effective.Trim().ToUpperInvariant() switch
         {
             "CLAUDE" or "ANTHROPIC" => _services.GetRequiredService<ClaudeClient>(),
             "AZUREOPENAI" or "AZURE" or "OPENAI" => _services.GetRequiredService<AzureOpenAiClient>(),
             "MOCK" or "FAKE" or "STUB" => _services.GetRequiredService<MockLlmClient>(),
-            _ => throw new LlmException($"Unknown LLM provider: '{providerName}'. Expected Claude | AzureOpenAI | Mock."),
+            "MAF" or "MAF-AZURE" or "AGENTFRAMEWORK" => _services.GetRequiredService<MafChatClient>(),
+            _ => throw new LlmException($"Unknown LLM provider: '{providerName}'. Expected Claude | AzureOpenAI | Mock | MAF."),
         };
     }
 }

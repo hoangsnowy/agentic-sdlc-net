@@ -73,6 +73,14 @@ public sealed class ClaudeClient : ILlmClient
         ArgumentNullException.ThrowIfNull(request);
         request.Validate();
 
+        if (string.IsNullOrWhiteSpace(_options.ApiKey))
+        {
+            throw new LlmException(
+                "Anthropic API key not configured. Set 'Llm:Claude:ApiKey' (user-secrets or env), "
+                + "or set 'Llm:ForceProvider=AzureOpenAI' to run the whole pipeline on Azure only.",
+                Provider);
+        }
+
         var stopwatch = Stopwatch.StartNew();
 
         var payload = new ClaudeRequestDto

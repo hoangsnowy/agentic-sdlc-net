@@ -78,6 +78,7 @@ public static class LlmGatewayServiceCollectionExtensions
         });
 
         services.AddTransient<MockLlmClient>();
+        services.AddTransient<MafChatClient>();   // Azure OpenAI via official SDK + Microsoft.Extensions.AI
 
         // Factory + default ILlmClient.
         services.AddSingleton<ILlmClientFactory, LlmClientFactory>();

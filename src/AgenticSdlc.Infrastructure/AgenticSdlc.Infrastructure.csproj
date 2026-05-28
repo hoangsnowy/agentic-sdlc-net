@@ -27,6 +27,10 @@
     <!-- LLM SDKs -->
     <PackageReference Include="Azure.AI.OpenAI" />
     <PackageReference Include="Azure.Identity" />
+    <!-- Microsoft Agent Framework — official SDK + agent runtime -->
+    <PackageReference Include="Microsoft.Agents.AI" />
+    <PackageReference Include="Microsoft.Agents.AI.OpenAI" />
+    <PackageReference Include="Microsoft.Agents.AI.Workflows" />
     <PackageReference Include="JsonSchema.Net" />
 
     <!-- HTTP, resiliency, options, DI -->

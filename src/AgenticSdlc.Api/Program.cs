@@ -76,9 +76,26 @@ app.MapGet("/", () => Results.Ok(new
    .WithSummary("Service identity")
    .WithTags("Meta");
 
-app.MapGet("/health", () => Results.Ok(new { status = "Healthy", utc = DateTime.UtcNow }))
+app.MapGet("/health", (Microsoft.Extensions.Options.IOptions<AgenticSdlc.Domain.Llm.LlmOptions> llm) =>
+{
+    var o = llm.Value;
+    var claudeReady = !string.IsNullOrWhiteSpace(o.Claude.ApiKey);
+    var azureReady = !string.IsNullOrWhiteSpace(o.AzureOpenAi.ApiKey) && !string.IsNullOrWhiteSpace(o.AzureOpenAi.Endpoint);
+    return Results.Ok(new
+    {
+        status = "Healthy",
+        utc = DateTime.UtcNow,
+        llm = new
+        {
+            provider = o.Provider,
+            forceProvider = o.ForceProvider,
+            claudeKeyConfigured = claudeReady,
+            azureKeyConfigured = azureReady,
+        },
+    });
+})
    .WithName("Health")
-   .WithSummary("Liveness probe")
+   .WithSummary("Liveness probe + LLM provider readiness")
    .WithTags("Meta");
 
 app.MapPipelineEndpoints();

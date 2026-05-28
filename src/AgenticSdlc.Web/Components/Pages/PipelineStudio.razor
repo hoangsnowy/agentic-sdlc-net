@@ -1,9 +1,11 @@
 @page "/timeline"
 @using AgenticSdlc.Application.Agents
 @using Microsoft.Extensions.DependencyInjection
+@using AgenticSdlc.Domain.Llm
 @inject IServiceProvider Sp
 @inject DemoRunContext DemoCtx
 @inject CircuitPipelineProgress Progress
+@inject Microsoft.Extensions.Options.IOptions<LlmOptions> LlmOpts
 @implements IDisposable
 
 <PageTitle>Agent Studio — Agentic SDLC</PageTitle>
@@ -40,7 +42,7 @@
 
             @if (!_useDemo)
             {
-                <p class="hint">"Configured" mode calls the real Claude / Azure OpenAI — you must set the API key in <code>appsettings</code> (user-secrets).</p>
+                <p class="hint">Live mode → provider <strong>@ActiveProvider</strong>. Set the API key in user-secrets. Azure-only: set <code>Llm:ForceProvider=AzureOpenAI</code> + your Azure deployment in <code>Llm:AzureOpenAi:Model</code>.</p>
             }
             else
             {
@@ -220,6 +222,10 @@
     private string _description = "As an administrator, I want to manage products in the catalog with a unique SKU to avoid duplicates.";
     private int _nmax = 3;
     private bool _useDemo = true;
+
+    private string ActiveProvider => string.IsNullOrWhiteSpace(LlmOpts.Value.ForceProvider)
+        ? LlmOpts.Value.Provider
+        : $"{LlmOpts.Value.ForceProvider} (forced)";
 
     // ---- Run state ----
     private bool _running;
