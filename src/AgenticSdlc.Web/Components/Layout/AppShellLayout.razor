@@ -4,6 +4,8 @@
 
 <LoginOverlay />
 
+<TopBar />
+
 <div class="shell shell-deskmode">
     <div class="shell-pane">
         <main class="shell-main">
@@ -25,7 +27,7 @@
         <div class="sm-header">
             <div class="sm-brand-mark">◆</div>
             <div>
-                <div class="sm-brand-title">Agentic SDLC</div>
+                <div class="sm-brand-title">AgentOS</div>
                 <div class="sm-brand-sub">v1.0 · open source</div>
             </div>
         </div>
@@ -74,9 +76,9 @@
 }
 
 @* ===== About dialog ===== *@
-<Dialog Show="_aboutOpen" Title="About — Agentic SDLC" Width="440" OnClose="@(() => _aboutOpen = false)">
+<Dialog Show="_aboutOpen" Title="About — AgentOS" Width="440" OnClose="@(() => _aboutOpen = false)">
     <ChildContent>
-        <h3 class="about-h">Agentic SDLC</h3>
+        <h3 class="about-h">AgentOS</h3>
         <p class="about-tag">A .NET multi-agent AI framework for the software development lifecycle.</p>
         <table class="about-tbl">
             <tr><th>Version</th><td>1.0</td></tr>

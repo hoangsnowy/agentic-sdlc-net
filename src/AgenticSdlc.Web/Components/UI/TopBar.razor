@@ -1,0 +1,87 @@
+@* TopBar — GNOME / KDE Plasma style top panel. Brand + active window + tray. *@
+
+@using AgenticSdlc.Web.Services
+@inject WindowManagerService WM
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="topbar">
+    <div class="tb-left">
+        <span class="tb-logo">◆</span>
+        <span class="tb-brand">AgentOS</span>
+        <span class="tb-sep"></span>
+        <span class="tb-workspace">Workspace 1</span>
+    </div>
+
+    <div class="tb-center">@ActiveTitle</div>
+
+    <div class="tb-right">
+        <span class="tb-indicator" title="LLM gateway online">
+            <span class="tb-dot ok"></span> Live
+        </span>
+        <span class="tb-sep"></span>
+        <span class="tb-clock" title="@_today">@_now</span>
+        <span class="tb-sep"></span>
+        <div class="tb-user" title="@(_user ?? "guest")">
+            <span class="tb-avatar">@AvatarLetter</span>
+            <span class="tb-name">@(_user ?? "guest")</span>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _now = "";
+    private string _today = "";
+    private string? _user;
+    private string AvatarLetter => string.IsNullOrEmpty(_user) ? "?" : _user[..1].ToUpperInvariant();
+
+    private System.Threading.Timer? _timer;
+
+    private string ActiveTitle
+    {
+        get
+        {
+            var w = WM.Open
+                .Where(x => !x.Minimized)
+                .OrderByDescending(x => x.Z)
+                .FirstOrDefault();
+            return w is null ? "AgentOS — Desktop" : $"{w.Icon} {w.Title}";
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        UpdateClock();
+        _timer = new System.Threading.Timer(_ => InvokeAsync(() => { UpdateClock(); StateHasChanged(); }),
+            null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        WM.Changed += OnChanged;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                _user = await JS.InvokeAsync<string?>("localStorage.getItem", "agentic-signed-in");
+                StateHasChanged();
+            }
+            catch { }
+        }
+    }
+
+    private void UpdateClock()
+    {
+        var now = DateTime.Now;
+        _now = now.ToString("HH:mm:ss");
+        _today = now.ToString("dddd, d MMMM yyyy");
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        WM.Changed -= OnChanged;
+    }
+}

@@ -5,16 +5,6 @@
 @inject IJSRuntime JS
 @implements IDisposable
 
-@* ===== System tray (top-right corner, separate glass chip) ===== *@
-<div class="systray">
-    <span class="st-clock" title="@_today">@_now</span>
-    <span class="st-divider"></span>
-    <div class="st-user" title="@(_user ?? "guest")">
-        <span class="st-avatar">@AvatarLetter</span>
-        <span class="st-name">@(_user ?? "guest")</span>
-    </div>
-</div>
-
 @* ===== Dock (floating bottom-center pill) ===== *@
 <div class="dock">
     <button class="dock-item dock-start @(StartOpen ? "open" : "")" @onclick="ToggleStart" @onclick:stopPropagation="true" title="Start menu">

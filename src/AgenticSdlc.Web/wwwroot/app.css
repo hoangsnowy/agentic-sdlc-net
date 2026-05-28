@@ -1010,26 +1010,8 @@ select {
 }
 .dock-item.min .di-dot { background: rgba(255,255,255,.40); box-shadow: none; }
 
-/* =================================================================
-   System tray (top-right floating chip)
-   ================================================================= */
-.systray {
-    position: fixed;
-    top: 14px; right: 14px;
-    z-index: 200;
-    display: flex; align-items: center;
-    gap: 10px;
-    padding: 5px 12px;
-    background: rgba(15,23,42,.50);
-    backdrop-filter: blur(28px) saturate(200%);
-    -webkit-backdrop-filter: blur(28px) saturate(200%);
-    border: 1px solid rgba(255,255,255,.18);
-    border-radius: 14px;
-    box-shadow: 0 10px 30px rgba(0,0,0,.40), 0 1px 0 rgba(255,255,255,.15) inset;
-    color: #fff;
-    font-size: 12.5px;
-    user-select: none;
-}
+.systray { display: none !important; }
+/* (legacy systray removed; TopBar replaces it) */
 .st-clock { font-weight: 600; font-variant-numeric: tabular-nums; min-width: 64px; text-align: center; letter-spacing: .02em; }
 .st-divider { width: 1px; height: 18px; background: rgba(255,255,255,.22); }
 .st-user { display: flex; align-items: center; gap: 7px; }
@@ -1289,6 +1271,76 @@ select {
 
 /* Clock font now ticks per second — give it room for seconds */
 .tb-clock { min-width: 64px; text-align: center; }
+
+/* =================================================================
+   TopBar — GNOME / KDE Plasma top panel (full-width strip)
+   ================================================================= */
+.topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 30px;
+    background: rgba(8,16,32,.65);
+    backdrop-filter: blur(28px) saturate(200%);
+    -webkit-backdrop-filter: blur(28px) saturate(200%);
+    border-bottom: 1px solid rgba(255,255,255,.10);
+    display: flex; align-items: center;
+    padding: 0 14px;
+    gap: 12px;
+    color: #fff;
+    font-size: 12px;
+    user-select: none;
+    z-index: 200;
+    box-shadow: 0 4px 16px rgba(0,0,0,.25);
+}
+.topbar .tb-left,
+.topbar .tb-right { display: flex; align-items: center; gap: 10px; }
+.topbar .tb-left  { flex: 1; min-width: 0; }
+.topbar .tb-right { flex: 1; min-width: 0; justify-content: flex-end; }
+.topbar .tb-center {
+    flex: 2; min-width: 0; text-align: center;
+    font-weight: 600;
+    opacity: .85;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    letter-spacing: .01em;
+}
+.topbar .tb-logo {
+    width: 20px; height: 20px;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, #4a8cff, #7c3aed);
+    color: #fff;
+    border-radius: 4px;
+    font-size: 12px; font-weight: 700;
+    border: 1px solid rgba(255,255,255,.30);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.30);
+}
+.topbar .tb-brand { font-weight: 700; letter-spacing: .03em; }
+.topbar .tb-workspace { color: rgba(255,255,255,.65); font-weight: 500; }
+.topbar .tb-sep { width: 1px; height: 14px; background: rgba(255,255,255,.18); }
+.topbar .tb-indicator { display: inline-flex; align-items: center; gap: 6px; opacity: .90; }
+.topbar .tb-dot { width: 6px; height: 6px; border-radius: 50%; }
+.topbar .tb-dot.ok { background: var(--ok); box-shadow: 0 0 6px rgba(22,163,74,.80); }
+.topbar .tb-dot.warn { background: var(--warn); box-shadow: 0 0 6px rgba(217,119,6,.80); }
+.topbar .tb-dot.err { background: var(--err); box-shadow: 0 0 6px rgba(220,38,38,.80); }
+.topbar .tb-clock { font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: .02em; }
+.topbar .tb-user { display: flex; align-items: center; gap: 7px; }
+.topbar .tb-avatar {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4a8cff, #7c3aed);
+    color: #fff;
+    display: grid; place-items: center;
+    font-size: 10px; font-weight: 700;
+    border: 1px solid rgba(255,255,255,.35);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.30);
+}
+.topbar .tb-name { font-weight: 500; }
+
+/* Push Desktop content below the TopBar so wallpaper icons aren't clipped */
+.desktop { padding-top: 50px; }
+.desktop-clock { top: 50px; }
+
+/* AppFrame windows should not start inside the TopBar either */
+.appwin { top: max(40px, var(--win-top, 0px)); }
 .topbar-spacer { flex: 1; }
 .theme-btn {
     background: linear-gradient(180deg, #ffffff, #f1f4f8);
