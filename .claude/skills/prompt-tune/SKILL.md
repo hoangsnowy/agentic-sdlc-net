@@ -1,69 +1,63 @@
 ---
 name: prompt-tune
 description: >
-  Tune system prompt của 1 agent trong agentic-sdlc-net. Batch eval: gửi N fixture
-  input → so output thực tế vs expected → report drift (pass-rate, JSON-valid, token diff).
-  Hỗ trợ A/B 2 prompt variant. Use when user says "tune prompt for X agent", "tối ưu prompt",
-  "/prompt-tune RequirementAgent", "agent X đang fail nhiều case", "đổi prompt thử".
-  Auto-trigger khi KC bench cho 1 agent < 70% pass.
+  Tune the system prompt of one AgentOs pipeline agent via batch eval: send N fixture inputs
+  through two prompt variants, score outputs (pass-rate, JSON-valid, token diff), and pick a
+  winner. Use when user says "tune prompt for X agent", "tối ưu prompt",
+  "/prompt-tune RequirementAgent", "đổi prompt thử".
 ---
 
-Eval + iterate system prompt của 1 agent: batch chạy fixture → so output → A/B test.
+A/B-test an agent's system prompt with a fixture eval set.
 
-## Khi nào dùng
+## When
 
-- Agent có pass-rate thấp trong KC bench (< 70%).
-- Sau khi đổi model alias (vd Sonnet 4 → Sonnet 4.5) cần re-tune.
-- User muốn so 2 phiên bản prompt (current vs proposal).
-- Tinh chỉnh JSON output schema (Coding / Requirement agent).
+- An agent's pass-rate looks weak on existing tests.
+- After upgrading a model alias (e.g. Sonnet 4 → Sonnet 4.5) — re-tune.
+- User wants to compare two prompt drafts.
+- Tightening a structured JSON output schema.
 
 ## Input
 
-1. **Agent tên**: `Requirement` | `Coding` | `Testing` | `QA` | custom.
-2. **Prompt variant**:
-   - **A** (current): đọc từ source `src/AgentOs.Infrastructure/Agents/{Name}Agent.cs` const `SystemPrompt`.
-   - **B** (proposed): user provide qua message, hoặc đọc từ file `docs/prompts/{Name}-v2.md`.
-3. **Eval set**: path JSON array các case `{input, expected}`. Default `tests/fixtures/eval/{Name}.json`.
-4. **Provider**: thường giữ `Mock` cho speed → nhưng tune thật phải `Anthropic`/`AzureOpenAI` (real LLM).
-5. **N runs / case**: default 3 (giảm variance random sampling).
+1. **Agent name**: `Requirement` | `Coding` | `Testing` | `Qa` | custom.
+2. **Prompt variants**:
+   - **A** (current): read `SystemPrompt` const from `src/AgentOs.Modules.Pipeline/Agents/{Name}Agent.cs`.
+   - **B** (proposed): user-supplied string, or read from `docs/prompts/{Name}-v2.md`.
+3. **Eval set**: path to a JSON array of `{input, expected}` cases. Default `tests/fixtures/eval/{Name}.json`.
+4. **Provider**: `Mock` is fast but useless for real comparison — use `Claude`/`AzureOpenAI` for actual tuning.
+5. **N runs per case**: default `3` (reduce sampling variance).
 
 ## Steps
 
 ### 1. Build eval harness
 
-File `tools/eval/PromptEval.cs` (ephemeral, không commit):
+`tools/eval/PromptEval.cs` (ephemeral, do not commit):
 
 ```csharp
-// Cấu trúc:
-// 1. Đọc tests/fixtures/eval/{Name}.json → List<EvalCase>
-// 2. For mỗi prompt variant (A, B):
-//    For mỗi case × N runs:
-//       Build LlmRequest với SystemPrompt = variant
-//       Gọi ILlmClient.SendAsync
-//       Parse output (try-catch JSON nếu structured)
-//       Compute metric:
-//          - pass: output match expected (rule per agent)
-//          - json_valid: deserialize OK
-//          - schema_match: required fields present
-//          - tokens_in, tokens_out, cost_usd, latency_ms
+// 1. Load tests/fixtures/eval/{Name}.json → List<EvalCase>
+// 2. For each variant (A, B):
+//    For each case × N runs:
+//       new LlmRequest(SystemPrompt = variant, ...)
+//       client.SendAsync(...)
+//       Parse output (try-catch for structured JSON)
+//       Score: pass / json_valid / schema_match / tokens / cost / latency
 // 3. Aggregate per variant: mean ± std
-// 4. Statistical test (paired t-test nếu N ≥ 5)
+// 4. Paired t-test if N ≥ 5
 ```
 
-### 2. Pass rule per agent
+### 2. Pass rules
 
 | Agent | Pass = |
 |---|---|
-| Requirement | Parse JSON OK + ≥ `expected.entitiesMin` entity + ≥ `expected.endpointsMin` endpoint |
-| Coding | C# code compile (chạy `dotnet build` trên scratch project) + ≥ `expected.minClasses` class |
-| Testing | xUnit attribute valid + ≥ `expected.minTests` test method |
-| QA | Score ∈ [0, 1] + consistency_flag matches expected boolean |
+| Requirement | JSON parses + `entities.Count >= expected.entitiesMin` + `endpoints.Count >= expected.endpointsMin` |
+| Coding | Generated C# compiles in a scratch project + `≥ expected.minClasses` classes |
+| Testing | xUnit attributes parse + `≥ expected.minTests` `[Fact]`/`[Theory]` methods |
+| Qa | `Score ∈ [0, 1]` + `consistency_flag == expected` |
 
-Detect malformed bằng try-catch `JsonSerializer.Deserialize` + custom validator per agent. Log lý do fail vào CSV (cho debug).
+Log every failure reason to CSV for debugging.
 
 ### 3. Report
 
-Output `docs/prompts/{Name}-tune-{date}.md`:
+`docs/prompts/{Name}-tune-{date}.md`:
 
 ```markdown
 # Prompt tune: {Name}Agent — {date}
@@ -80,35 +74,32 @@ Output `docs/prompts/{Name}-tune-{date}.md`:
 - Mean cost: $0.0058 / call  ↑ +38%
 - Mean tokens: 1640 → 720  ↑
 
-## Fail breakdown — Variant A
+## Fail breakdown — A
 | Case ID | Reason |
 |---|---|
-| KC1-003 | Missing "endpoints" key |
-| KC1-007 | Entity count = 0 |
-...
+| 003 | Missing "endpoints" key |
+| 007 | Entity count = 0 |
 
 ## Recommendation
-Adopt B nếu cost increase $+0.0016/call chấp nhận được. ROI: pass-rate +19pp vs cost +38%.
-Decision: ___ (user fill)
+Adopt B if +$0.0016/call is acceptable; pass-rate +19pp vs cost +38%.
+Decision: ___
 ```
 
-### 4. Apply variant đã chọn
+### 4. Apply the winner
 
-Nếu user accept B:
+If B accepted:
 
 ```bash
-# Edit src/AgentOs.Infrastructure/Agents/{Name}Agent.cs
-# Replace const SystemPrompt = """...""" với variant B
+# Edit src/AgentOs.Modules.Pipeline/Agents/{Name}Agent.cs — replace SystemPrompt const with B
 dotnet test --filter "FullyQualifiedName~{Name}AgentTests"
 ```
 
-Commit:
 ```bash
-git add src/AgentOs.Infrastructure/Agents/{Name}Agent.cs docs/prompts/{Name}-tune-*.md
+git add src/AgentOs.Modules.Pipeline/Agents/{Name}Agent.cs docs/prompts/{Name}-tune-*.md
 git commit -m "refactor({name}): adopt prompt variant B (+19pp pass-rate)"
 ```
 
-Nếu reject B: chỉ commit report (cho audit trail luận văn):
+If B rejected — commit the report only for the audit trail:
 ```bash
 git add docs/prompts/{Name}-tune-*.md
 git commit -m "docs(prompts): eval {Name} variant B — rejected (cost ROI insufficient)"
@@ -116,17 +107,17 @@ git commit -m "docs(prompts): eval {Name} variant B — rejected (cost ROI insuf
 
 ### 5. Cleanup
 
-Xoá `tools/eval/PromptEval.cs` (ephemeral). Giữ lại eval fixture (`tests/fixtures/eval/{Name}.json`) — versioned, dùng lại lần sau.
+Delete `tools/eval/PromptEval.cs` (ephemeral). Keep the eval fixture (`tests/fixtures/eval/{Name}.json`) — versioned, reused.
 
 ## Safety
 
-- **Cost warning**: 60 case × 2 variant × N=3 = 360 call. Pre-estimate qua `CostCalculator`. Báo user nếu > $2.
-- **Deterministic**: ép `Temperature=0` khi eval (variance khác sẽ làm metric noisy). Lưu seed nếu provider support.
-- **PII**: eval fixture KHÔNG được chứa PII / secret. Sanitize input trước commit.
-- **Cache fixture**: nếu Mock provider có hit, KHÔNG dùng eval — phải force real provider (tune cần real output).
+- **Cost**: 60 cases × 2 variants × N=3 = 360 calls. Pre-estimate with `CostCalculator`. Warn if > $2.
+- **Determinism**: force `Temperature = 0` during eval; record `Seed` when the provider supports it.
+- **PII**: eval fixtures must contain no PII / secrets.
+- **Mock**: never tune against `MockLlmClient` — fixture hits make metrics meaningless. Force a real provider.
 
 ## Out of scope
 
-- Generate prompt variant tự động (đó là design task user phải làm).
-- Cross-agent tune (vd Orchestrator + QA cùng lúc) — skill này 1 agent / run.
-- Production deploy gated on metric — không có CD pipeline cho prototype.
+- Auto-generating prompt variants (user's design call).
+- Multi-agent tuning at once (one agent per run).
+- Production gating on metrics (no CD pipeline for the prototype).
