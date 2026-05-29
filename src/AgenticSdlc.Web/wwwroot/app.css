@@ -1023,6 +1023,54 @@ select {
 }
 
 /* =================================================================
+   Blazor reconnection modal — themed override of the default white box
+   ================================================================= */
+#components-reconnect-modal {
+    display: none;
+    position: fixed; inset: 0; z-index: 100000;
+    align-items: center; justify-content: center;
+    background: rgba(4, 8, 14, .55);
+    backdrop-filter: blur(10px) saturate(120%);
+    -webkit-backdrop-filter: blur(10px) saturate(120%);
+}
+#components-reconnect-modal.components-reconnect-show,
+#components-reconnect-modal.components-reconnect-failed,
+#components-reconnect-modal.components-reconnect-rejected { display: flex; }
+
+.reconnect-card {
+    min-width: 300px; max-width: 360px;
+    display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+    padding: var(--space-6) var(--space-6) var(--space-5);
+    background: var(--bg-2); color: var(--text-primary);
+    border: 1px solid var(--border-strong); border-radius: var(--r-5);
+    box-shadow: var(--shadow-4); text-align: center;
+    animation: login-rise var(--duration-base) var(--ease-emphasized);
+}
+.reconnect-title { font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.reconnect-sub { font-size: var(--fs-sm); color: var(--text-tertiary); }
+.reconnect-icon { font-size: 26px; line-height: 1; }
+.components-reconnect-failed .reconnect-icon { color: var(--warn); }
+.reconnect-spinner {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 3px solid var(--border-strong); border-top-color: var(--accent);
+    animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.reconnect-actions { margin-top: var(--space-2); display: flex; gap: var(--space-2); }
+.reconnect-btn {
+    padding: 7px 16px; font-family: inherit; font-size: var(--fs-sm); font-weight: var(--fw-medium);
+    color: var(--txt-on-accent); background: var(--accent);
+    border: 0; border-radius: var(--radius-md); cursor: pointer;
+}
+.reconnect-btn:hover { background: var(--accent-hover); }
+/* State-driven visibility — Blazor sets the modal class; show only the matching block. */
+.reconnect-when-show, .reconnect-when-failed, .reconnect-when-rejected { display: none; }
+.components-reconnect-show .reconnect-when-show { display: block; }
+.components-reconnect-show .reconnect-spinner.reconnect-when-show { display: block; }
+.components-reconnect-failed .reconnect-when-failed { display: block; }
+.components-reconnect-rejected .reconnect-when-rejected { display: block; }
+
+/* =================================================================
    Login overlay — glass login screen
    ================================================================= */
 .login-overlay {
