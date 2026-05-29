@@ -136,6 +136,7 @@
             <div class="syn-bottom-body">
                 @if (_bottomTab == 0)
                 {
+                    <p class="muted">Design note — describes the shared state; saved with the graph, not enforced during Run.</p>
                     <textarea class="syn-code" @bind="_graph.StateSchemaJson" spellcheck="false"></textarea>
                 }
                 else if (_bottomTab == 1)
@@ -143,6 +144,10 @@
                     @if (_graph.Guardrails.Count == 0)
                     {
                         <p class="muted">No guardrails yet.</p>
+                    }
+                    else
+                    {
+                        <p class="muted">Reference list — saved with the graph, not yet enforced during Run.</p>
                     }
                     <ul class="syn-guard">@foreach (var g in _graph.Guardrails){<li><Icon Name="lock" Size="12" /> @g</li>}</ul>
                 }
