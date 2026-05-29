@@ -1,0 +1,84 @@
+@page "/"
+@inject AgentOs.Web.Services.WindowManagerService WM
+@inject AgentOs.Web.Services.ToastService Toasts
+
+<PageTitle>Desktop — AgentOS</PageTitle>
+
+<div class="desktop"
+     @oncontextmenu="OnRightClick"
+     @oncontextmenu:preventDefault="true">
+
+    <div class="desktop-group">
+        <div class="desktop-group-title">Apps</div>
+        <div class="desktop-icons">
+            @foreach (var app in AgentOs.Web.Services.AppCatalog.Pinned)
+            {
+                <DesktopIcon Title="@app.Title" Icon="@app.Icon" Caption="@app.Caption"
+                             OnClick="@(() => WM.OpenApp(app.Key, app.Title, app.Icon, app.W, app.H))" />
+            }
+        </div>
+    </div>
+
+    <div class="desktop-group">
+        <div class="desktop-group-title">Quick actions</div>
+        <div class="desktop-icons">
+            <DesktopIcon Title="Open PR" Icon="git-pull-request" Caption="Push generated code → GitHub"
+                         OnClick="@(() => WM.OpenApp("pipeline", "Pipeline", "play"))" />
+            <DesktopIcon Title="Verify build" Icon="hammer" Caption="dotnet build the agent output"
+                         OnClick="@(() => WM.OpenApp("pipeline", "Pipeline", "play"))" />
+            <DesktopIcon Title="GitHub" Icon="arrow-square-out" Caption="Repository"
+                         Href="https://github.com/hoangsnowy/agentic-sdlc-net" Target="_blank" />
+        </div>
+    </div>
+
+    @* Clock removed — TopBar clock is the single source. KDE Plasma + macOS convention. *@
+</div>
+
+<ContextMenu Show="_ctxShow" X="_ctxX" Y="_ctxY" OnClose="@(() => _ctxShow = false)">
+    <button class="ctx-item" @onclick="Refresh">
+        <span class="ctx-ic"><Icon Name="arrow-clockwise" Size="14" /></span> Refresh
+    </button>
+    <button class="ctx-item" @onclick="@(() => Launch("system", "System", "wrench", 760, 600))">
+        <span class="ctx-ic"><Icon Name="wrench" Size="14" /></span> System settings
+    </button>
+    <button class="ctx-item" @onclick="@(() => Launch("settings", "Settings", "gear", 720, 600))">
+        <span class="ctx-ic"><Icon Name="gear" Size="14" /></span> App settings
+    </button>
+    <div class="ctx-sep"></div>
+    <button class="ctx-item" @onclick="DemoToast">
+        <span class="ctx-ic"><Icon Name="bell" Size="14" /></span> Test notification
+    </button>
+    <button class="ctx-item" @onclick="@(() => Launch("pipeline", "Pipeline", "play", 920, 620))">
+        <span class="ctx-ic"><Icon Name="play" Size="14" /></span> Open Pipeline
+    </button>
+</ContextMenu>
+
+@code {
+    private bool _ctxShow;
+    private int _ctxX, _ctxY;
+
+    private void OnRightClick(MouseEventArgs e)
+    {
+        _ctxX = (int)e.ClientX;
+        _ctxY = (int)e.ClientY;
+        _ctxShow = true;
+    }
+
+    private void Refresh()
+    {
+        _ctxShow = false;
+        Toasts.Show("Desktop", "Refreshed.", AgentOs.Web.Services.ToastKind.Ok);
+    }
+
+    private void Launch(string key, string title, string icon, int w, int h)
+    {
+        WM.OpenApp(key, title, icon, w, h);
+        _ctxShow = false;
+    }
+
+    private void DemoToast()
+    {
+        Toasts.Show("Demo", "Triggered from right-click context menu.", AgentOs.Web.Services.ToastKind.Info);
+        _ctxShow = false;
+    }
+}

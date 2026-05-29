@@ -35,7 +35,7 @@ _logger.LogInformation(
     nameof(XxxAgent), response.InputTokens, response.OutputTokens, response.CostUsd, response.Latency.TotalMilliseconds);
 ```
 
-Cần JSON file sink. Verify `src/AgenticSdlc.Api/Program.cs` có:
+Cần JSON file sink. Verify `src/AgentOs.Api/Program.cs` có:
 
 ```csharp
 builder.Logging.AddJsonConsole(opts => opts.IncludeScopes = true);

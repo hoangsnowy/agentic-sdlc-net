@@ -1,0 +1,191 @@
+@* SystemApp — macOS System Settings / GNOME Settings style: sidebar categories + content pane. *@
+
+@using AgentOs.Web.Services
+@inject ToastService Toasts
+@inject WindowManagerService WM
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject AuthSession Auth
+
+<div class="prefs">
+    <aside class="prefs-side">
+        <div class="prefs-side-head">System</div>
+        <button class="prefs-cat @(_tab == "general"    ? "active" : "")" @onclick="@(() => _tab = "general")"><span class="prefs-cat-ic"><Icon Name="gear"    Size="14" /></span> General</button>
+        <button class="prefs-cat @(_tab == "appearance" ? "active" : "")" @onclick="@(() => _tab = "appearance")"><span class="prefs-cat-ic"><Icon Name="palette" Size="14" /></span> Appearance</button>
+        <button class="prefs-cat @(_tab == "notifs"     ? "active" : "")" @onclick="@(() => _tab = "notifs")"><span class="prefs-cat-ic"><Icon Name="bell"    Size="14" /></span> Notifications</button>
+        <button class="prefs-cat @(_tab == "about"      ? "active" : "")" @onclick="@(() => _tab = "about")"><span class="prefs-cat-ic"><Icon Name="info"    Size="14" /></span> About</button>
+        <button class="prefs-cat @(_tab == "session"    ? "active" : "")" @onclick="@(() => _tab = "session")"><span class="prefs-cat-ic"><Icon Name="power"   Size="14" /></span> Session</button>
+    </aside>
+
+    <div class="prefs-content">
+        @switch (_tab)
+        {
+            case "general":
+                <div class="prefs-section">
+                    <h2 class="prefs-h">General</h2>
+                    <p class="prefs-sub">Workspace + focus behaviour.</p>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Focus mode</strong><br /><span class="prefs-hint">Mute non-critical notifications (warnings + errors still show).</span></div>
+                    <Toggle Checked="_focus" CheckedChanged="OnFocusChanged" />
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Auto-minimize on blur</strong><br /><span class="prefs-hint">Send inactive windows to the dock when another is focused.</span></div>
+                    <Toggle Checked="_autoMin" CheckedChanged="OnAutoMinChanged" />
+                </div>
+                break;
+            case "appearance":
+                <div class="prefs-section">
+                    <h2 class="prefs-h">Appearance</h2>
+                    <p class="prefs-sub">Color scheme, wallpaper, glass strength.</p>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Color scheme</strong><br /><span class="prefs-hint">Light or dark UI palette.</span></div>
+                    <select value="@_theme" @onchange="OnThemeChanged" class="prefs-select">
+                        <option value="light">Light (Breeze)</option>
+                        <option value="dark">Dark (Breeze Dark)</option>
+                    </select>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Wallpaper</strong><br /><span class="prefs-hint">Background preset.</span></div>
+                    <select value="@_wall" @onchange="OnWallpaperChanged" class="prefs-select">
+                        <option value="enterprise-light">Enterprise — light slate</option>
+                        <option value="enterprise-dark">Enterprise — dark charcoal</option>
+                        <option value="aurora">Aurora — violet × cyan</option>
+                        <option value="midnight">Midnight — deep navy</option>
+                        <option value="sunset">Sunset — orange × magenta</option>
+                    </select>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Glass strength</strong><br /><span class="prefs-hint">Backdrop blur intensity (0 = flat, 100 = max).</span></div>
+                    <div class="prefs-range">
+                        <input type="range" min="0" max="100" value="@_glass" @oninput="OnGlassChanged" />
+                        <span class="prefs-range-val">@_glass%</span>
+                    </div>
+                </div>
+                break;
+            case "notifs":
+                <div class="prefs-section">
+                    <h2 class="prefs-h">Notifications</h2>
+                    <p class="prefs-sub">Toast banners shown in the top-right.</p>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Show toasts</strong></div>
+                    <Toggle Checked="_notifs" CheckedChanged="OnNotifsChanged" />
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Send a test notification</strong></div>
+                    <Btn OnClick="@(() => Toasts.Show("System", "Hello from System Settings", ToastKind.Info))">Send test</Btn>
+                </div>
+                break;
+            case "about":
+                <div class="prefs-section">
+                    <h2 class="prefs-h">About AgentOS</h2>
+                    <p class="prefs-sub">A .NET multi-agent AI framework for the SDLC.</p>
+                </div>
+                <table class="prefs-tbl">
+                    <tr><th>Version</th><td>1.0</td></tr>
+                    <tr><th>Runtime</th><td>.NET 10</td></tr>
+                    <tr><th>License</th><td>MIT</td></tr>
+                    <tr><th>Source</th><td><a href="https://github.com/hoangsnowy/agentic-sdlc-net" target="_blank">github.com/hoangsnowy/agentic-sdlc-net</a></td></tr>
+                </table>
+                break;
+            case "session":
+                <div class="prefs-section">
+                    <h2 class="prefs-h">Session</h2>
+                    <p class="prefs-sub">Local sign-in stored in <code>localStorage</code>.</p>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Lock</strong><br /><span class="prefs-hint">Return to the splash screen.</span></div>
+                    <Btn OnClick="Lock"><Icon Name="lock" Size="14" /> Lock</Btn>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-label"><strong>Sign out</strong><br /><span class="prefs-hint">Clear stored credentials.</span></div>
+                    <Btn Variant="Btn.ButtonVariant.Danger" OnClick="SignOut"><Icon Name="power" Size="14" /> Sign out</Btn>
+                </div>
+                break;
+        }
+    </div>
+</div>
+
+@code {
+    private string _tab = "general";
+    private bool _notifs = true;
+    private bool _focus;
+    private bool _autoMin;
+    private string _theme = "light";
+    private string _wall = "enterprise-light";
+    private int _glass = 0;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _theme = await JS.InvokeAsync<string>("agenticTheme.getTheme");
+            _wall = await JS.InvokeAsync<string>("agenticTheme.getWallpaper");
+            _glass = await JS.InvokeAsync<int>("agenticTheme.getGlass");
+
+            // Reflect the live singleton state (restored at shell start by AppShellLayout).
+            _notifs = Toasts.ShowToasts;
+            _focus = Toasts.FocusMode;
+            _autoMin = WM.AutoMinimizeOnBlur;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnNotifsChanged(bool v)
+    {
+        _notifs = v;
+        Toasts.ShowToasts = v;
+        await JS.InvokeVoidAsync("localStorage.setItem", "pref-show-toasts", v ? "1" : "0");
+    }
+
+    private async Task OnFocusChanged(bool v)
+    {
+        _focus = v;
+        Toasts.FocusMode = v;
+        await JS.InvokeVoidAsync("localStorage.setItem", "pref-focus", v ? "1" : "0");
+    }
+
+    private async Task OnAutoMinChanged(bool v)
+    {
+        _autoMin = v;
+        WM.AutoMinimizeOnBlur = v;
+        await JS.InvokeVoidAsync("localStorage.setItem", "pref-auto-min", v ? "1" : "0");
+    }
+
+    private async Task OnThemeChanged(ChangeEventArgs e)
+    {
+        _theme = e.Value?.ToString() ?? "light";
+        await JS.InvokeVoidAsync("agenticTheme.applyTheme", _theme);
+    }
+
+    private async Task OnWallpaperChanged(ChangeEventArgs e)
+    {
+        _wall = e.Value?.ToString() ?? "enterprise-light";
+        await JS.InvokeVoidAsync("agenticTheme.applyWallpaper", _wall);
+    }
+
+    private async Task OnGlassChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var v))
+        {
+            _glass = v;
+            await JS.InvokeVoidAsync("agenticTheme.applyGlass", _glass);
+        }
+    }
+
+    private async Task Lock()
+    {
+        await JS.InvokeVoidAsync("agenticAuth.signOut");
+        Auth.Clear();
+        Nav.NavigateTo(Nav.Uri, forceLoad: true);
+    }
+
+    private async Task SignOut()
+    {
+        await JS.InvokeVoidAsync("agenticAuth.signOut");
+        Auth.Clear();
+        Toasts.Show("Signed out", "Refresh to sign in again.", ToastKind.Info);
+    }
+}

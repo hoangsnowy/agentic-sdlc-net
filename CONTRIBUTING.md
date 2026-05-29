@@ -8,9 +8,9 @@ for the software development lifecycle. Issues and pull requests are welcome.
 ```bash
 git clone https://github.com/hoangsnowy/agentic-sdlc-net.git
 cd agentic-sdlc-net
-dotnet restore AgenticSdlc.sln
-dotnet build   AgenticSdlc.sln -c Release
-dotnet test    AgenticSdlc.sln -c Release
+dotnet restore AgentOs.sln
+dotnet build   AgentOs.sln -c Release
+dotnet test    AgentOs.sln -c Release
 ```
 
 Prerequisites: the **.NET 10 SDK** (pinned via `global.json`). No API keys are required —

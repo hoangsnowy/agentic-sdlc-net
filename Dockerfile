@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for AgenticSdlc.Api (.NET 10, Phase 6).
+# Multi-stage Dockerfile for AgentOs.Api (.NET 10, Phase 6).
 # Build: docker build -t agentic-sdlc-net:latest .
 # Run:   docker run -p 8080:8080 -e Llm__Anthropic__ApiKey=sk-... agentic-sdlc-net:latest
 
@@ -8,17 +8,17 @@ WORKDIR /src
 
 # Copy csproj + restore (cache layer)
 COPY global.json Directory.Build.props Directory.Packages.props ./
-COPY AgenticSdlc.sln ./
-COPY src/AgenticSdlc.Domain/AgenticSdlc.Domain.csproj            src/AgenticSdlc.Domain/
-COPY src/AgenticSdlc.Application/AgenticSdlc.Application.csproj  src/AgenticSdlc.Application/
-COPY src/AgenticSdlc.Infrastructure/AgenticSdlc.Infrastructure.csproj src/AgenticSdlc.Infrastructure/
-COPY src/AgenticSdlc.Api/AgenticSdlc.Api.csproj                  src/AgenticSdlc.Api/
-COPY tests/AgenticSdlc.Tests/AgenticSdlc.Tests.csproj            tests/AgenticSdlc.Tests/
-RUN dotnet restore src/AgenticSdlc.Api/AgenticSdlc.Api.csproj
+COPY AgentOs.sln ./
+COPY src/AgentOs.Domain/AgentOs.Domain.csproj            src/AgentOs.Domain/
+COPY src/AgentOs.Application/AgentOs.Application.csproj  src/AgentOs.Application/
+COPY src/AgentOs.Infrastructure/AgentOs.Infrastructure.csproj src/AgentOs.Infrastructure/
+COPY src/AgentOs.Api/AgentOs.Api.csproj                  src/AgentOs.Api/
+COPY tests/AgentOs.Tests/AgentOs.Tests.csproj            tests/AgentOs.Tests/
+RUN dotnet restore src/AgentOs.Api/AgentOs.Api.csproj
 
 # Copy source + publish Release
 COPY . .
-RUN dotnet publish src/AgenticSdlc.Api/AgenticSdlc.Api.csproj \
+RUN dotnet publish src/AgentOs.Api/AgentOs.Api.csproj \
     -c Release \
     -o /app/publish \
     --no-restore \
@@ -42,4 +42,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1
 
-ENTRYPOINT ["dotnet", "AgenticSdlc.Api.dll"]
+ENTRYPOINT ["dotnet", "AgentOs.Api.dll"]

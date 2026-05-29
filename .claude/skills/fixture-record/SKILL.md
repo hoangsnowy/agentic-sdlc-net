@@ -30,7 +30,7 @@ Nếu user reference 1 file test cụ thể, đọc test → extract prompt tr�
 
 ### 1. Compute hash trước
 
-Hash logic giống `MockLlmClient.ComputeHash` (file `src/AgenticSdlc.Infrastructure/Llm/MockLlmClient.cs`):
+Hash logic giống `MockLlmClient.ComputeHash` (file `src/AgentOs.Infrastructure/Llm/MockLlmClient.cs`):
 
 - Input string: `$"{Model}\n---\n{SystemPrompt}\n---\n{UserPrompt}"`
 - SHA-256 → lấy 8 byte đầu → hex lowercase (16 chars).
@@ -46,7 +46,7 @@ Console.WriteLine(Convert.ToHexString(h, 0, 8).ToLowerInvariant());
 '
 ```
 
-Hoặc dùng `MockLlmClient.ComputeHash` qua test runner. Cheapest: viết test 1-shot in `tests/AgenticSdlc.Tests/Llm/FixtureHashScratch.cs`, chạy, đọc output, xoá file.
+Hoặc dùng `MockLlmClient.ComputeHash` qua test runner. Cheapest: viết test 1-shot in `tests/AgentOs.Tests/Llm/FixtureHashScratch.cs`, chạy, đọc output, xoá file.
 
 ### 2. Verify fixture đã có chưa
 
@@ -61,23 +61,23 @@ Nếu có rồi: hỏi user overwrite không. Mặc định KHÔNG overwrite (fi
 Phải có `user-secrets` setup. Verify:
 
 ```bash
-cd src/AgenticSdlc.Api
+cd src/AgentOs.Api
 dotnet user-secrets list | grep -i apikey
 ```
 
 Nếu chưa có → bảo user setup theo `docs/SETUP.md` mục 3.
 
-Viết 1 test script tạm `tests/AgenticSdlc.Tests/Llm/Scratch_RecordFixture.cs`:
+Viết 1 test script tạm `tests/AgentOs.Tests/Llm/Scratch_RecordFixture.cs`:
 
 ```csharp
-using AgenticSdlc.Domain.Llm;
-using AgenticSdlc.Infrastructure.Llm;
+using AgentOs.Domain.Llm;
+using AgentOs.Infrastructure.Llm;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
 
-namespace AgenticSdlc.Tests.Llm;
+namespace AgentOs.Tests.Llm;
 
 [Trait("Category", "Live")]
 public class Scratch_RecordFixture

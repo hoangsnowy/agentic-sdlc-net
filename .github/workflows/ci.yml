@@ -24,14 +24,14 @@ jobs:
         run: dotnet --info
 
       - name: Restore
-        run: dotnet restore AgenticSdlc.sln
+        run: dotnet restore AgentOs.sln
 
       - name: Build (Release)
-        run: dotnet build AgenticSdlc.sln --configuration Release --no-restore
+        run: dotnet build AgentOs.sln --configuration Release --no-restore
 
       - name: Test
         run: |
-          dotnet test AgenticSdlc.sln \
+          dotnet test AgentOs.sln \
             --configuration Release \
             --no-build \
             --logger "trx;LogFileName=test_results.trx" \

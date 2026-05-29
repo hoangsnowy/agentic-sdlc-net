@@ -1,6 +1,6 @@
 # Design tokens — AgentOS (enterprise admin console, KDE Plasma Breeze leaning)
 
-All tokens live in `src/AgenticSdlc.Web/wwwroot/app.css` under `:root`. Two orthogonal axes drive the theming:
+All tokens live in `src/AgentOs.Web/wwwroot/app.css` under `:root`. Two orthogonal axes drive the theming:
 
 - `data-theme` on `<html>` — `light` (default, Breeze Light) or `dark` (Breeze Dark). Controls color tokens.
 - `data-wallpaper` on `<html>` — `enterprise-light` (default), `enterprise-dark`, `aurora`, `midnight`, `sunset`. Controls only `--wallpaper-bg` and `--wallpaper-animation`.

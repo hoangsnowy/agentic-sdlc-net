@@ -55,13 +55,13 @@ Clean Architecture; dependencies point inward (`Api`/`Web` → `Infrastructure` 
 
 ```
 src/
-├── AgenticSdlc.Domain/          # DTOs, pipeline artifacts, ILlmClient, exceptions (BCL only)
-├── AgenticSdlc.Application/     # Agent interfaces, prompts, metrics + repository contracts
-├── AgenticSdlc.Infrastructure/  # LLM clients, agent + orchestrator impls, EF Core, DI
-├── AgenticSdlc.Api/             # ASP.NET Core minimal API (+ Scalar UI), JWT auth
-├── AgenticSdlc.Web/             # Blazor Server "AgentOS" desktop
-├── AgenticSdlc.AppHost/         # .NET Aspire orchestration
-└── AgenticSdlc.ServiceDefaults/ # Shared telemetry / health / resilience
+├── AgentOs.Domain/          # DTOs, pipeline artifacts, ILlmClient, exceptions (BCL only)
+├── AgentOs.Application/     # Agent interfaces, prompts, metrics + repository contracts
+├── AgentOs.Infrastructure/  # LLM clients, agent + orchestrator impls, EF Core, DI
+├── AgentOs.Api/             # ASP.NET Core minimal API (+ Scalar UI), JWT auth
+├── AgentOs.Web/             # Blazor Server "AgentOS" desktop
+├── AgentOs.AppHost/         # .NET Aspire orchestration
+└── AgentOs.ServiceDefaults/ # Shared telemetry / health / resilience
 tests/                           # xUnit unit, integration + E2E
 ```
 
@@ -78,21 +78,21 @@ an Anthropic and/or Azure OpenAI key — the offline Demo path needs neither.
 git clone https://github.com/hoangsnowy/agentic-sdlc-net.git
 cd agentic-sdlc-net
 
-dotnet restore AgenticSdlc.sln
-dotnet build   AgenticSdlc.sln -c Release
-dotnet test    AgenticSdlc.sln -c Release
+dotnet restore AgentOs.sln
+dotnet build   AgentOs.sln -c Release
+dotnet test    AgentOs.sln -c Release
 ```
 
 Run the API — Scalar UI at `http://localhost:5080/scalar/v1`:
 
 ```bash
-dotnet run --project src/AgenticSdlc.Api
+dotnet run --project src/AgentOs.Api
 ```
 
 Run the AgentOS desktop UI at `http://localhost:5180`:
 
 ```bash
-dotnet run --project src/AgenticSdlc.Web
+dotnet run --project src/AgentOs.Web
 ```
 
 By default the Web runs the engine **in-process** (no API needed). To point it at a remote API
@@ -106,7 +106,7 @@ export Api__BaseUrl="http://localhost:5080/"    # bash
 Or run the whole stack with the Aspire dashboard:
 
 ```bash
-dotnet run --project src/AgenticSdlc.AppHost
+dotnet run --project src/AgentOs.AppHost
 ```
 
 Call the end-to-end pipeline directly:
@@ -124,7 +124,7 @@ curl -X POST http://localhost:5080/pipeline \
 Set secrets via user-secrets — never commit keys:
 
 ```bash
-cd src/AgenticSdlc.Api
+cd src/AgentOs.Api
 dotnet user-secrets set "Llm:Anthropic:ApiKey"   "sk-ant-..."
 dotnet user-secrets set "Llm:AzureOpenAI:ApiKey" "..."
 ```
@@ -174,14 +174,14 @@ Run the Aspire AppHost — it wires Postgres + Keycloak + API + Web in one shot 
 connection string + OIDC authority into the API and Web hosts:
 
 ```bash
-dotnet run --project src/AgenticSdlc.AppHost
+dotnet run --project src/AgentOs.AppHost
 ```
 
 If you prefer to run the API directly without Aspire, point it at any reachable Postgres:
 
 ```bash
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
-  "Host=localhost;Port=5432;Database=agentic_sdlc;Username=postgres;Password=postgres"
+  "Host=localhost;Port=5432;Database=agentos;Username=postgres;Password=postgres"
 ```
 
 ## API
@@ -215,7 +215,7 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full deployment guide and
 
 Issues and PRs are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the dev workflow and
 conventions, and [SECURITY.md](SECURITY.md) for reporting vulnerabilities. Build and test with
-`dotnet test AgenticSdlc.sln -c Release`; CI runs the same on every push and PR. Commits follow
+`dotnet test AgentOs.sln -c Release`; CI runs the same on every push and PR. Commits follow
 [Conventional Commits](https://www.conventionalcommits.org/); `Nullable` and `TreatWarningsAsErrors`
 are enabled across the solution.
 

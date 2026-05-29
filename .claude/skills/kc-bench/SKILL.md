@@ -57,7 +57,7 @@ Mỗi KC có schema input/expected riêng — đọc luận văn Mục 2.5 để
 ### 2. Start API local
 
 ```bash
-dotnet run --project src/AgenticSdlc.Api &
+dotnet run --project src/AgentOs.Api &
 # Đợi health pass:
 until curl -sf http://localhost:5080/health > /dev/null; do sleep 1; done
 ```

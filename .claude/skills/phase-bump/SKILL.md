@@ -70,7 +70,7 @@ File `docs/PHASE_$N.md`. Template:
 
 ## Test coverage
 
-- {N} unit test trong `tests/AgenticSdlc.Tests/{namespace}/`
+- {N} unit test trong `tests/AgentOs.Tests/{namespace}/`
 - {coverage % nếu có report}
 
 ## Quyết định kỹ thuật

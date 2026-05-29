@@ -26,10 +26,10 @@ Default nếu user nói "scaffold giống Requirement Agent": dùng setting tron
 
 ## Output (5 file + 2 edit)
 
-### 1. `src/AgenticSdlc.Application/Agents/I{Name}Agent.cs`
+### 1. `src/AgentOs.Application/Agents/I{Name}Agent.cs`
 
 ```csharp
-namespace AgenticSdlc.Application.Agents;
+namespace AgentOs.Application.Agents;
 
 public interface I{Name}Agent
 {
@@ -40,15 +40,15 @@ public sealed record {Name}Input(/* fields theo user */);
 public sealed record {Name}Result(/* fields theo user */, decimal CostUsd, int InputTokens, int OutputTokens);
 ```
 
-### 2. `src/AgenticSdlc.Infrastructure/Agents/{Name}Agent.cs`
+### 2. `src/AgentOs.Infrastructure/Agents/{Name}Agent.cs`
 
 ```csharp
-using AgenticSdlc.Application.Agents;
-using AgenticSdlc.Domain.Llm;
+using AgentOs.Application.Agents;
+using AgentOs.Domain.Llm;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace AgenticSdlc.Infrastructure.Agents;
+namespace AgentOs.Infrastructure.Agents;
 
 public sealed class {Name}Agent : I{Name}Agent
 {
@@ -108,11 +108,11 @@ public sealed class {Name}Agent : I{Name}Agent
 }
 ```
 
-### 3. Edit `src/AgenticSdlc.Infrastructure/DependencyInjection.cs`
+### 3. Edit `src/AgentOs.Infrastructure/DependencyInjection.cs`
 
-Thêm `services.AddTransient<I{Name}Agent, {Name}Agent>();`. Nếu file chưa có, tạo `AgenticSdlc.Infrastructure/Agents/DependencyInjection.cs` với extension `AddAgents(this IServiceCollection)`.
+Thêm `services.AddTransient<I{Name}Agent, {Name}Agent>();`. Nếu file chưa có, tạo `AgentOs.Infrastructure/Agents/DependencyInjection.cs` với extension `AddAgents(this IServiceCollection)`.
 
-### 4. Edit `src/AgenticSdlc.Api/appsettings.json`
+### 4. Edit `src/AgentOs.Api/appsettings.json`
 
 Thêm vào section `Agents` nếu chưa có:
 
@@ -122,17 +122,17 @@ Thêm vào section `Agents` nếu chưa có:
 
 Verify section `Agents` đã match `AgentsOptions` class (Phase 3 sẽ tạo nếu chưa có).
 
-### 5. `tests/AgenticSdlc.Tests/Agents/{Name}AgentTests.cs`
+### 5. `tests/AgentOs.Tests/Agents/{Name}AgentTests.cs`
 
 ```csharp
-using AgenticSdlc.Application.Agents;
-using AgenticSdlc.Domain.Llm;
-using AgenticSdlc.Infrastructure.Agents;
+using AgentOs.Application.Agents;
+using AgentOs.Domain.Llm;
+using AgentOs.Infrastructure.Agents;
 using NSubstitute;
 using Shouldly;
 using Xunit;
 
-namespace AgenticSdlc.Tests.Agents;
+namespace AgentOs.Tests.Agents;
 
 public class {Name}AgentTests
 {
@@ -177,7 +177,7 @@ Compute hash bằng `MockLlmClient.ComputeHash(new LlmRequest(SystemPrompt, samp
 }
 ```
 
-### 7. (Optional) Endpoint trong `src/AgenticSdlc.Api/Program.cs`
+### 7. (Optional) Endpoint trong `src/AgentOs.Api/Program.cs`
 
 ```csharp
 app.MapPost("/{name}", async (I{Name}Agent agent, {Name}Input input, CancellationToken ct)
@@ -189,7 +189,7 @@ app.MapPost("/{name}", async (I{Name}Agent agent, {Name}Input input, Cancellatio
 Sau khi scaffold xong:
 
 ```bash
-dotnet build AgenticSdlc.sln          # 0 warn, 0 err (WarningsAsErrors active)
+dotnet build AgentOs.sln          # 0 warn, 0 err (WarningsAsErrors active)
 dotnet test --filter "FullyQualifiedName~{Name}AgentTests"
 ```
 

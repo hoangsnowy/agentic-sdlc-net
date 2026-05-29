@@ -7,5 +7,5 @@ name: agentic-sdlc-net
 services:
   app:
     language: dotnet
-    project: ./src/AgenticSdlc.AppHost/AgenticSdlc.AppHost.csproj
+    project: ./src/AgentOs.AppHost/AgentOs.AppHost.csproj
     host: containerapp
