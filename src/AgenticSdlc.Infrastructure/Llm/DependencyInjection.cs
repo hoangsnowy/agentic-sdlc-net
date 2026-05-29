@@ -81,6 +81,7 @@ public static class LlmGatewayServiceCollectionExtensions
         // "Remote dev-IDE agent" runtime — dispatch codegen to a connected remote agent (0 API tokens).
         // Broker is a singleton (holds connected agents + pending requests); a transport (SignalR) wires to it.
         services.TryAddSingleton<RemoteAgent.IRemoteAgentBroker, RemoteAgent.InProcessRemoteAgentBroker>();
+        services.TryAddSingleton<RemoteAgent.IRemoteExecApprover, RemoteAgent.AutoApproveRemoteExec>();
         services.AddTransient<RemoteAgentLlmClient>();
 
         // Runtime overrides (in-memory) — settable from the Settings UI; take precedence over LlmOptions.

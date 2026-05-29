@@ -69,6 +69,10 @@ builder.Services.AddJwtAuth(builder.Configuration);
 builder.Services.AddDataProtection();
 builder.Services.AddAppConfigStore(builder.Configuration);
 
+// Remote dev-IDE agent transport — SignalR hub + the broker->hub bridge (Increment 2).
+builder.Services.AddSignalR();
+builder.Services.AddHostedService<AgenticSdlc.Api.RemoteAgent.RemoteAgentTransport>();
+
 var app = builder.Build();
 
 app.UseAuthentication();
@@ -127,6 +131,7 @@ app.MapGet("/health", (Microsoft.Extensions.Options.IOptions<AgenticSdlc.Domain.
 app.MapAuthEndpoints();
 app.MapPipelineEndpoints();
 app.MapSettingsEndpoints();
+app.MapHub<AgenticSdlc.Api.RemoteAgent.RemoteAgentHub>(AgenticSdlc.Api.RemoteAgent.RemoteAgentHub.Path);
 
 // Settings "Test connection" — probe the configured provider with a minimal call. Uses the
 // Orchestrator agent's provider+model (a matched, cheap pair; Haiku by default). Returns ok/error
