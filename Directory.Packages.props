@@ -13,6 +13,7 @@
     <!-- LLM SDKs / Azure -->
     <PackageVersion Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageVersion Include="Azure.Identity" Version="1.14.0" />
+    <PackageVersion Include="Anthropic.SDK" Version="5.10.0" />
 
     <!-- Microsoft Agent Framework (MAF) + Microsoft.Extensions.AI -->
     <PackageVersion Include="Microsoft.Agents.AI" Version="1.7.0" />

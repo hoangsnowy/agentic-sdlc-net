@@ -2,6 +2,8 @@
 // Sprint 1 — Extension that registers the LLM Gateway into IServiceCollection.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using AgenticSdlc.Application.Configuration;
 using AgenticSdlc.Domain.Llm;
 using Microsoft.Extensions.Configuration;
@@ -91,6 +93,39 @@ public static class LlmGatewayServiceCollectionExtensions
         services.AddTransient<MockLlmClient>();
         services.AddTransient<MafChatClient>();   // Azure OpenAI via official SDK + Microsoft.Extensions.AI
 
+        // SDK-based provider clients via Microsoft.Extensions.AI IChatClient: Claude (Anthropic.SDK) +
+        // Azure OpenAI (Azure.AI.OpenAI), each a multi-key pool with 429 failover. These are what the
+        // factory resolves for "Claude"/"AzureOpenAI"; the raw HttpClient clients above are legacy.
+        services.AddKeyedSingleton<ILlmClient>("Claude", (sp, _) =>
+        {
+            var opts = sp.GetRequiredService<IOptions<LlmOptions>>();
+            var ov = sp.GetRequiredService<IRuntimeOverrides>();
+            return new PooledChatLlmClient(
+                "Claude",
+                (key, _model) => SdkChatClients.CreateClaude(key),
+                () => ClaudeKeyPool(opts.Value.Claude, ov),
+                sp.GetRequiredService<ApiKeyRouter>(),
+                SdkChatClients.IsRateLimited,
+                _ => null,
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<PooledChatLlmClient>>());
+        });
+        services.AddKeyedSingleton<ILlmClient>("AzureOpenAI", (sp, _) =>
+        {
+            var opts = sp.GetRequiredService<IOptions<LlmOptions>>();
+            var ov = sp.GetRequiredService<IRuntimeOverrides>();
+            return new PooledChatLlmClient(
+                "AzureOpenAI",
+                (key, model) => SdkChatClients.CreateAzure(
+                    key,
+                    !string.IsNullOrWhiteSpace(ov.AzureEndpoint) ? ov.AzureEndpoint! : opts.Value.AzureOpenAi.Endpoint,
+                    string.IsNullOrWhiteSpace(model) ? opts.Value.AzureOpenAi.Model : model),
+                () => AzureKeyPool(opts.Value.AzureOpenAi, ov),
+                sp.GetRequiredService<ApiKeyRouter>(),
+                SdkChatClients.IsRateLimited,
+                _ => null,
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<PooledChatLlmClient>>());
+        });
+
         // "Remote dev-IDE agent" runtime — dispatch codegen to a connected remote agent (0 API tokens).
         // Broker is a singleton (holds connected agents + pending requests); a transport (SignalR) wires to it.
         services.TryAddSingleton<RemoteAgent.IRemoteAgentBroker, RemoteAgent.InProcessRemoteAgentBroker>();
@@ -104,5 +139,24 @@ public static class LlmGatewayServiceCollectionExtensions
         services.AddTransient<ILlmClient>(sp => sp.GetRequiredService<ILlmClientFactory>().CreateDefault());
 
         return services;
+    }
+
+    // Distinct key pool: runtime override (Settings) first, then configured ApiKeys, then the single ApiKey.
+    private static List<string> ClaudeKeyPool(ClaudeOptions opts, IRuntimeOverrides ov)
+        => Pool(ov.AnthropicApiKey, opts.ApiKeys, opts.ApiKey);
+
+    private static List<string> AzureKeyPool(AzureOpenAiOptions opts, IRuntimeOverrides ov)
+        => Pool(ov.AzureApiKey, opts.ApiKeys, opts.ApiKey);
+
+    private static List<string> Pool(string? overrideKey, IEnumerable<string> pool, string singleKey)
+    {
+        var keys = new List<string>();
+        if (!string.IsNullOrWhiteSpace(overrideKey)) { keys.Add(overrideKey!); }
+        foreach (var k in pool)
+        {
+            if (!string.IsNullOrWhiteSpace(k)) { keys.Add(k); }
+        }
+        if (!string.IsNullOrWhiteSpace(singleKey)) { keys.Add(singleKey); }
+        return keys.Distinct(StringComparer.Ordinal).ToList();
     }
 }
