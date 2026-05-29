@@ -33,6 +33,10 @@ public sealed class WindowManagerService
     /// <summary>Most-recently-opened app keys, newest first, capped at <see cref="RecentCapacity"/>.</summary>
     public IReadOnlyList<string> RecentKeys => _recent;
 
+    /// <summary>System → General → "Auto-minimize on blur": when a window gains focus, the others
+    /// are sent to the dock.</summary>
+    public bool AutoMinimizeOnBlur { get; set; }
+
     /// <summary>Fires when the window set or z-order changes.</summary>
     public event Action? Changed;
 
@@ -74,12 +78,23 @@ public sealed class WindowManagerService
         }
     }
 
-    /// <summary>Bring a window to the top of the z-stack.</summary>
+    /// <summary>Bring a window to the top of the z-stack. When <see cref="AutoMinimizeOnBlur"/> is
+    /// on, the other windows are minimized to the dock.</summary>
     public void Focus(Guid id)
     {
         var i = _open.FindIndex(x => x.Id == id);
         if (i < 0) { return; }
         _open[i] = _open[i] with { Z = ++_nextZ };
+        if (AutoMinimizeOnBlur)
+        {
+            for (var j = 0; j < _open.Count; j++)
+            {
+                if (_open[j].Id != id && !_open[j].Minimized)
+                {
+                    _open[j] = _open[j] with { Minimized = true };
+                }
+            }
+        }
         Changed?.Invoke();
     }
 

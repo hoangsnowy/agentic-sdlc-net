@@ -542,7 +542,9 @@
         var fwd = outs.Where(e => Target(e) is { } t && t.X > node.X).ToList();
 
         var isBranch = node.Category == StepCategory.Evaluator;
-        var underCap = visits.GetValueOrDefault(node.Id) < 3;
+        // Honour the node's editable max-iterations (inspector); fall back to 3 if unset.
+        var cap = node.MaxIterations > 0 ? node.MaxIterations : 3;
+        var underCap = visits.GetValueOrDefault(node.Id) < cap;
         if (isBranch && consistent == false && back.Count > 0 && underCap)
         {
             return Target(back[0]);

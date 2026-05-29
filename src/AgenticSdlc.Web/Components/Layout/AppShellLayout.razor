@@ -2,6 +2,7 @@
 @inject Microsoft.JSInterop.IJSRuntime JS
 @inject NavigationManager Nav
 @inject AgenticSdlc.Web.Services.WindowManagerService WM
+@inject AgenticSdlc.Web.Services.ToastService Toasts
 @inject AgenticSdlc.Web.Services.AuthSession Auth
 
 <LoginOverlay />
@@ -183,11 +184,32 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            await RestorePreferencesAsync();
+        }
+
         if (_focusOnRender)
         {
             _focusOnRender = false;
             try { await _searchRef.FocusAsync(); } catch { /* element gone */ }
         }
+    }
+
+    // Hydrate the persisted desktop preferences into the singleton services so they apply
+    // app-wide (toast suppression, focus mode, auto-minimize) — not only while System is open.
+    private async Task RestorePreferencesAsync()
+    {
+        try
+        {
+            var showToasts = await JS.InvokeAsync<string?>("localStorage.getItem", "pref-show-toasts");
+            var focus = await JS.InvokeAsync<string?>("localStorage.getItem", "pref-focus");
+            var autoMin = await JS.InvokeAsync<string?>("localStorage.getItem", "pref-auto-min");
+            Toasts.ShowToasts = showToasts != "0";          // default on
+            Toasts.FocusMode = focus == "1";                // default off
+            WM.AutoMinimizeOnBlur = autoMin == "1";         // default off
+        }
+        catch { /* prerender / JS unavailable */ }
     }
 
     private void RefreshRecents()

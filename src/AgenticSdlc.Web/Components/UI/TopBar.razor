@@ -6,6 +6,8 @@
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject AgenticSdlc.Web.Services.AuthSession Auth
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
+@inject IHttpClientFactory HttpFactory
 @implements IDisposable
 
 <div class="topbar">
@@ -19,8 +21,8 @@
     <div class="tb-center">@ActiveTitle</div>
 
     <div class="tb-right">
-        <span class="tb-indicator" title="LLM gateway online">
-            <span class="tb-dot ok"></span> Live
+        <span class="tb-indicator" title="@_healthTitle">
+            <span class="tb-dot @(_online ? "ok" : "err")"></span> @(_online ? "Live" : "Offline")
         </span>
         <span class="tb-sep"></span>
 
@@ -82,6 +84,11 @@
     private bool _clockOpen;
     private string _theme = "light";
 
+    private bool _online = true;
+    private string _healthTitle = "LLM gateway online";
+    private string? _apiBase;
+    private int _tick;
+
     private System.Threading.Timer? _timer;
 
     private string ActiveTitle
@@ -99,9 +106,45 @@
     protected override void OnInitialized()
     {
         UpdateClock();
-        _timer = new System.Threading.Timer(_ => InvokeAsync(() => { UpdateClock(); StateHasChanged(); }),
+        _apiBase = Config["Api:BaseUrl"];
+        _timer = new System.Threading.Timer(_ => InvokeAsync(OnTick),
             null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
         WM.Changed += OnChanged;
+        _ = CheckHealthAsync();
+    }
+
+    private async Task OnTick()
+    {
+        UpdateClock();
+        // Re-check gateway health every 15s (not every tick).
+        if (++_tick % 15 == 0) { await CheckHealthAsync(); }
+        StateHasChanged();
+    }
+
+    // In-process mode (no Api:BaseUrl) the gateway runs locally → always up. In split mode,
+    // probe the API's public /health endpoint.
+    private async Task CheckHealthAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_apiBase))
+        {
+            _online = true;
+            _healthTitle = "LLM gateway online (in-process)";
+            return;
+        }
+        try
+        {
+            using var client = HttpFactory.CreateClient();
+            client.BaseAddress = new Uri(_apiBase.EndsWith('/') ? _apiBase : _apiBase + "/");
+            client.Timeout = TimeSpan.FromSeconds(3);
+            using var resp = await client.GetAsync("health");
+            _online = resp.IsSuccessStatusCode;
+            _healthTitle = _online ? $"API healthy — {_apiBase}" : $"API returned {(int)resp.StatusCode} — {_apiBase}";
+        }
+        catch (Exception ex)
+        {
+            _online = false;
+            _healthTitle = $"API unreachable — {ex.Message}";
+        }
     }
 
     private void OnChanged() => InvokeAsync(StateHasChanged);
