@@ -52,7 +52,7 @@ Phase 8 closes those gaps.
 
 ### 8.2 — API JWT bearer auth                  ✅
 
-### 8.3 — Web auth + LoginOverlay              ✅ (token in localStorage; cookie variant deferred)
+### 8.3 — Web auth + LoginOverlay              ✅ (localStorage JWT + central sign-out; HttpOnly cookie deferred — see open questions)
 
 ### 8.4 — Runtime configuration store          ✅ (EF + DataProtection-encrypted app_config, 15 s cache, startup hydration)
 
@@ -199,4 +199,12 @@ IOrchestratorAgent Orchestrator` + the old `RunAsync`).
    scoping is a Horizon 1 deliverable (`docs/architecture/MIGRATION_BACKLOG.md` M5).
 3. **Live KC transcripts.** Anthropic + Azure OpenAI credentials required to run. Use the
    student tier on Azure OpenAI; Claude pay-as-you-go costs ~ $0.10 per `n=10` KC4 run.
+4. **JWT storage — localStorage vs HttpOnly cookie (8.3b, deferred).** The JWT currently lives in
+   `localStorage` (`agentic-jwt`), readable by JS → XSS-exfiltratable. For a single-operator,
+   local-first admin console the risk is low and sign-out now clears every auth key centrally
+   (`agenticAuth.signOut()` + `AuthSession.Clear()`). Migrating to an HttpOnly+Secure+SameSite
+   cookie in Blazor Server *interactive* needs a static-SSR login page (the interactive circuit
+   has no `HttpContext` to set a cookie) + a custom `AuthenticationStateProvider` + a server
+   session — a deliberate rework, not a rushed one. Tracked as 8.3b. Until then, deploy behind
+   TLS and treat the operator credential as a shared secret.
 
