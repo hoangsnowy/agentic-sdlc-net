@@ -1,6 +1,6 @@
 # QaAgent Prompt — v1
 
-Version: **v1** · Source: `src/AgenticSdlc.Application/Prompts/QaPrompt.cs`
+Version: **v1** · Source: `src/AgentOs.Application/Prompts/QaPrompt.cs`
 
 ## System
 

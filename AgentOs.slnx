@@ -1,0 +1,27 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/AgentOs.Api/AgentOs.Api.csproj" />
+    <Project Path="src/AgentOs.AppHost/AgentOs.AppHost.csproj" />
+    <Project Path="src/AgentOs.Domain/AgentOs.Domain.csproj" />
+    <Project Path="src/AgentOs.Modules.AppConfig/AgentOs.Modules.AppConfig.csproj" />
+    <Project Path="src/AgentOs.Modules.Identity/AgentOs.Modules.Identity.csproj" />
+    <Project Path="src/AgentOs.Modules.Integration/AgentOs.Modules.Integration.csproj" />
+    <Project Path="src/AgentOs.Modules.Llm/AgentOs.Modules.Llm.csproj" />
+    <Project Path="src/AgentOs.Modules.Pipeline/AgentOs.Modules.Pipeline.csproj" />
+    <Project Path="src/AgentOs.Modules.RemoteAgent/AgentOs.Modules.RemoteAgent.csproj" />
+    <Project Path="src/AgentOs.Modules.Tenants/AgentOs.Modules.Tenants.csproj" />
+    <Project Path="src/AgentOs.RemoteAgent/AgentOs.RemoteAgent.csproj" />
+    <Project Path="src/AgentOs.ServiceDefaults/AgentOs.ServiceDefaults.csproj" />
+    <Project Path="src/AgentOs.SharedKernel/AgentOs.SharedKernel.csproj" />
+    <Project Path="src/AgentOs.Web/AgentOs.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AgentOs.E2E.Tests/AgentOs.E2E.Tests.csproj" />
+    <Project Path="tests/AgentOs.Tests/AgentOs.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -10,33 +10,33 @@ A .NET-native multi-agent AI platform for the software development lifecycle. Th
 
 ```bash
 # Build / test (sln-rooted, from D:\LuanVan\prototype)
-dotnet restore AgenticSdlc.sln
-dotnet build   AgenticSdlc.sln --configuration Release
-dotnet test    AgenticSdlc.sln --configuration Release
+dotnet restore AgentOs.sln
+dotnet build   AgentOs.sln --configuration Release
+dotnet test    AgentOs.sln --configuration Release
 
 # Single test class / method
 dotnet test --filter "FullyQualifiedName~ClaudeClientTests"
-dotnet test --filter "FullyQualifiedName=AgenticSdlc.Tests.Llm.LlmRequestTests.Validate_AllFieldsValid_DoesNotThrow"
+dotnet test --filter "FullyQualifiedName=AgentOs.Tests.Llm.LlmRequestTests.Validate_AllFieldsValid_DoesNotThrow"
 
 # Run the API locally — Scalar UI at http://localhost:5080/scalar/v1
-dotnet run --project src/AgenticSdlc.Api
+dotnet run --project src/AgentOs.Api
 
-# Local secrets (DO NOT commit). UserSecretsId = "agentic-sdlc-net-prototype"
-cd src/AgenticSdlc.Api
+# Local secrets (DO NOT commit). UserSecretsId = "agentos-prototype"
+cd src/AgentOs.Api
 dotnet user-secrets set "Llm:Anthropic:ApiKey"  "sk-ant-..."
 dotnet user-secrets set "Llm:AzureOpenAI:ApiKey" "..."
 
 # Run the Web (Blazor "Agent Studio") locally
-dotnet run --project src/AgenticSdlc.Web
+dotnet run --project src/AgentOs.Web
 
 # One-shot local dev — Aspire AppHost wires Postgres + Keycloak + API + Web
-dotnet run --project src/AgenticSdlc.AppHost
+dotnet run --project src/AgentOs.AppHost
 
 # Direct API run without Aspire — provide a Postgres connection string yourself
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=agentic_sdlc;Username=postgres;Password=postgres"
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=agentos;Username=postgres;Password=postgres"
 
 # Generate a new EF migration (Infrastructure is its own startup project for this)
-dotnet ef migrations add <Name> --project src/AgenticSdlc.Infrastructure --startup-project src/AgenticSdlc.Infrastructure --output-dir Persistence/Migrations
+dotnet ef migrations add <Name> --project src/AgentOs.Infrastructure --startup-project src/AgentOs.Infrastructure --output-dir Persistence/Migrations
 ```
 
 CI: `.github/workflows/ci.yml` runs `restore → build Release → test` on Ubuntu, on push to `main`/`develop` or PR to `main`.
@@ -47,11 +47,11 @@ Clean Architecture (Domain → Application → Infrastructure) with two hosts (A
 
 | Project | Role |
 |---|---|
-| `AgenticSdlc.Domain` | Provider-neutral DTOs (`LlmRequest`, `LlmResponse`, `LlmOptions`), pipeline artifacts (`RequirementSpec`, `CodeArtifact`, `TestArtifact`, `QaReport`, `PipelineResult`), interfaces (`ILlmClient`), exceptions. References no framework other than the .NET BCL. |
-| `AgenticSdlc.Application` | Agent interfaces (`IRequirementAgent` … `IOrchestratorAgent`), prompts, metrics (`IMetricsCollector`), persistence repository interfaces (`IPipelineRunRepository`, `IOrchestrationRepository`). References only `Microsoft.Extensions.Logging.Abstractions`. |
-| `AgenticSdlc.Infrastructure` | `ILlmClient` implementations (3 clients), 5 agent + orchestrator implementations, EF Core/Postgres persistence, DI extensions. References `Azure.AI.OpenAI`, `Microsoft.Extensions.Http.Resilience`, `Npgsql.EntityFrameworkCore.PostgreSQL`. |
-| `AgenticSdlc.Api` | ASP.NET Core minimal API (REST endpoints + Scalar UI). A composition root. |
-| `AgenticSdlc.Web` | Blazor Server "Agent Studio" UI (realtime pipeline + orchestration editor). Runs the engine in-process; deployed as a second Container App. A composition root. |
+| `AgentOs.Domain` | Provider-neutral DTOs (`LlmRequest`, `LlmResponse`, `LlmOptions`), pipeline artifacts (`RequirementSpec`, `CodeArtifact`, `TestArtifact`, `QaReport`, `PipelineResult`), interfaces (`ILlmClient`), exceptions. References no framework other than the .NET BCL. |
+| `AgentOs.Application` | Agent interfaces (`IRequirementAgent` … `IOrchestratorAgent`), prompts, metrics (`IMetricsCollector`), persistence repository interfaces (`IPipelineRunRepository`, `IOrchestrationRepository`). References only `Microsoft.Extensions.Logging.Abstractions`. |
+| `AgentOs.Infrastructure` | `ILlmClient` implementations (3 clients), 5 agent + orchestrator implementations, EF Core/Postgres persistence, DI extensions. References `Azure.AI.OpenAI`, `Microsoft.Extensions.Http.Resilience`, `Npgsql.EntityFrameworkCore.PostgreSQL`. |
+| `AgentOs.Api` | ASP.NET Core minimal API (REST endpoints + Scalar UI). A composition root. |
+| `AgentOs.Web` | Blazor Server "Agent Studio" UI (realtime pipeline + orchestration editor). Runs the engine in-process; deployed as a second Container App. A composition root. |
 
 ### LLM Gateway (critical pattern)
 
@@ -69,13 +69,13 @@ DI: `services.AddLlmGateway(configuration)` (Infrastructure) registers a named `
 
 ### Persistence (optional)
 
-`services.AddPersistence(configuration)` (Infrastructure) registers an EF Core `AgenticSdlcDbContext` (Postgres/Npgsql) + repositories **when `ConnectionStrings:DefaultConnection` is set**; otherwise it registers no-op repos so the app still boots stateless (CI / local without a DB). Three tables: `pipeline_runs` (artifact as `jsonb`), `run_metrics` (one row per LLM call — SQL-friendly for analytics), `orchestrations` (Agent Studio state). `PersistingOrchestratorAgent` decorates `IOrchestratorAgent` to save each run + per-call metrics best-effort (a DB error never corrupts a successful run). `await app.Services.InitializePersistenceAsync()` applies EF migrations at startup. Local Postgres: `docker compose up -d`. Azure: bicep `deployPostgres=true` (default off — avoids cost).
+`services.AddPersistence(configuration)` (Infrastructure) registers an EF Core `AgentOsDbContext` (Postgres/Npgsql) + repositories **when `ConnectionStrings:DefaultConnection` is set**; otherwise it registers no-op repos so the app still boots stateless (CI / local without a DB). Three tables: `pipeline_runs` (artifact as `jsonb`), `run_metrics` (one row per LLM call — SQL-friendly for analytics), `orchestrations` (Agent Studio state). `PersistingOrchestratorAgent` decorates `IOrchestratorAgent` to save each run + per-call metrics best-effort (a DB error never corrupts a successful run). `await app.Services.InitializePersistenceAsync()` applies EF migrations at startup. Local Postgres: `docker compose up -d`. Azure: bicep `deployPostgres=true` (default off — avoids cost).
 
 ## Conventions
 
 **.NET 10 / C# 14**, pinned to `10.0.100` via `global.json`. `Directory.Build.props` sets `TreatWarningsAsErrors=true`, `Nullable=enable`, `AnalysisLevel=latest-recommended`, `InvariantGlobalization=true` (Api overrides to `false`).
 
-**Analyzer suppressions** (see `Directory.Build.props`): `CA1848` + `CA1873` across the whole solution (LoggerMessage delegates) — must be removed before v1.0. The test project additionally suppresses `CA1707` (underscores in test names), `CA1816`, `CA1859`, `xUnit1051`. Persistence-related: `Infrastructure.csproj` suppresses two `NU1903` advisories for `System.Security.Cryptography.Xml` (a build-time-only transitive of `Microsoft.EntityFrameworkCore.Design`, not shipped at runtime, no patch yet) and exposes internals via `InternalsVisibleTo("AgenticSdlc.Tests")`; `.editorconfig` marks `**/Migrations/*.cs` as `generated_code` (EF migrations use block-scoped namespaces).
+**Analyzer suppressions** (see `Directory.Build.props`): `CA1848` + `CA1873` across the whole solution (LoggerMessage delegates) — must be removed before v1.0. The test project additionally suppresses `CA1707` (underscores in test names), `CA1816`, `CA1859`, `xUnit1051`. Persistence-related: `Infrastructure.csproj` suppresses two `NU1903` advisories for `System.Security.Cryptography.Xml` (a build-time-only transitive of `Microsoft.EntityFrameworkCore.Design`, not shipped at runtime, no patch yet) and exposes internals via `InternalsVisibleTo("AgentOs.Tests")`; `.editorconfig` marks `**/Migrations/*.cs` as `generated_code` (EF migrations use block-scoped namespaces).
 
 **Test stack**: xUnit **v3** (`xunit.v3` 1.1.0), Shouldly (NOT FluentAssertions, since v8 went commercial), NSubstitute. Naming: `MethodName_StateUnderTest_ExpectedBehavior`. `TestHttpMessageHandler.cs` is a helper that stubs `HttpClient` for client tests.
 

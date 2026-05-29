@@ -24,13 +24,13 @@ $env:KC_LIVE_MODE = $Mode
 $env:KC_LIVE_N = $N.ToString([System.Globalization.CultureInfo]::InvariantCulture)
 $env:KC_LIVE_MAX_USD = $MaxUsd.ToString([System.Globalization.CultureInfo]::InvariantCulture)
 
-dotnet test tests/AgenticSdlc.Tests/AgenticSdlc.Tests.csproj `
+dotnet test tests/AgentOs.Tests/AgentOs.Tests.csproj `
     -c Release `
     --filter "FullyQualifiedName~KcLiveBenchTests"
 
 $ts = (Get-Date -Format "yyyyMMddTHHmmssZ") -replace ':', ''
 $dest = "docs/transcripts/kc_live/$Mode-$ts"
-$src = "tests/AgenticSdlc.Tests/bin/Release/net10.0/TestResults"
+$src = "tests/AgentOs.Tests/bin/Release/net10.0/TestResults"
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
 
 if (Test-Path "$src/kc_live_summary.md") { Copy-Item "$src/kc_live_summary.md" "$dest/summary.md" }

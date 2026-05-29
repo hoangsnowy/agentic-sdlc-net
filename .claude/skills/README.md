@@ -1,29 +1,27 @@
-# Project skills — agentic-sdlc-net
+# Project skills — AgentOs
 
-Custom skills cho prototype luận văn này. Ship trong repo nên mọi session Claude Code mở project tự load.
+Custom skills shipped with the repo. Loaded automatically by every Claude Code session opened in this project.
 
-| Skill | Trigger | Khi nào |
+| Skill | Trigger | When |
 |---|---|---|
-| **agent-scaffold** | `/agent-scaffold X`, "scaffold agent X" | Phase 3-4: thêm agent mới (Requirement / Coding / Testing / QA / Orchestrator / custom). Sinh interface + impl + DI + test + fixture stub. |
-| **fixture-record** | `/fixture-record`, "record fixture for X" | Khi cần freeze response thật vào `tests/fixtures/llm/<hash>.json` cho MockLlmClient. |
-| **phase-bump** | `/phase-bump N`, "tick phase N" | Đánh dấu phase N DONE trong README, sinh `docs/PHASE_N.md`, commit theo convention. |
-| **kc-bench** | `/kc-bench KC1`, "chạy KC1-KC5" | Phase 5: benchmark luận văn Mục 2.5, xuất `.xlsx` + `.md` report. |
-| **prompt-tune** | `/prompt-tune {Name}Agent`, "tune prompt for X" | Eval prompt A vs B, batch fixture, report drift. Auto khi pass-rate < 70%. |
-| **cost-report** | `/cost-report week`, "báo cáo chi phí" | Aggregate log → `.xlsx` cost report (so sánh hybrid LLM). |
+| **agent-scaffold** | `/agent-scaffold X`, "scaffold agent X" | Add a new pipeline agent (`AgentOs.Modules.Pipeline.Agents.{Name}Agent`). Generates contract + impl + DI registration + xUnit test + fixture stub. |
+| **fixture-record** | `/fixture-record`, "record fixture for X" | Freeze a real LLM response into `tests/fixtures/llm/<hash>.json` for `MockLlmClient`. |
+| **prompt-tune** | `/prompt-tune {Name}Agent`, "tune prompt for X" | A/B-test prompt variants over an eval fixture set. Reports pass-rate / JSON-valid / token diff. |
+| **cost-report** | `/cost-report week`, "weekly cost" | Aggregate structured logs → xlsx + markdown cost report grouped by agent / provider / model / date. |
 
 ## Format
 
-Mỗi skill = directory với `SKILL.md` (YAML frontmatter `name` + `description` + body markdown). Claude Code đọc tự động khi mở project root.
+Each skill = directory with `SKILL.md` (YAML frontmatter `name` + `description` + body). Claude Code reads them automatically when the project root is opened.
 
-## Sửa skill
+## Edit
 
-Sửa `SKILL.md` trực tiếp. `description` field quyết định khi nào skill auto-trigger — viết cụ thể để match cao.
+Edit `SKILL.md` directly. The `description` field controls auto-trigger matching — be specific.
 
-## Thêm skill
+## Add
 
 ```bash
 mkdir .claude/skills/<new-name>
-# Tạo SKILL.md với frontmatter + body
+# Create SKILL.md with frontmatter + body
 ```
 
-Hoặc invoke `anthropic-skills:skill-creator` (built-in) cho guided creation.
+Or invoke the built-in `anthropic-skills:skill-creator` for guided creation.

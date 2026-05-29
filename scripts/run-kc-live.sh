@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# scripts/run-kc-live.sh — drive tests/AgenticSdlc.Tests/Smoke/KcLiveBenchTests.cs
+# scripts/run-kc-live.sh — drive tests/AgentOs.Tests/Smoke/KcLiveBenchTests.cs
 # against a real LLM (hybrid by default). Cost-bounded; transcripts land in
-# tests/AgenticSdlc.Tests/bin/Release/net10.0/TestResults/kc_live/.
+# tests/AgentOs.Tests/bin/Release/net10.0/TestResults/kc_live/.
 #
 # Usage:
 #   ANTHROPIC_API_KEY=... AZURE_OPENAI_API_KEY=... AZURE_OPENAI_ENDPOINT=... \
@@ -30,13 +30,13 @@ export KC_LIVE_MODE="$MODE"
 export KC_LIVE_N="$N"
 export KC_LIVE_MAX_USD="$MAX_USD"
 
-dotnet test tests/AgenticSdlc.Tests/AgenticSdlc.Tests.csproj \
+dotnet test tests/AgentOs.Tests/AgentOs.Tests.csproj \
   -c Release \
   --filter "FullyQualifiedName~KcLiveBenchTests"
 
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 DEST="docs/transcripts/kc_live/${MODE}-${TS}"
-SRC="tests/AgenticSdlc.Tests/bin/Release/net10.0/TestResults"
+SRC="tests/AgentOs.Tests/bin/Release/net10.0/TestResults"
 mkdir -p "$DEST"
 if [ -f "$SRC/kc_live_summary.md" ]; then
   cp "$SRC/kc_live_summary.md" "$DEST/summary.md"

@@ -1,7 +1,7 @@
 # Infra — Azure deploy via azd (Aspire)
 
 Deployment is driven by **.NET Aspire + Azure Developer CLI (`azd`)**. The AppHost
-(`src/AgenticSdlc.AppHost`) is the single source of truth for the topology; `azd`
+(`src/AgentOs.AppHost`) is the single source of truth for the topology; `azd`
 provisions everything from it:
 
 | Resource | From the app model |
@@ -54,7 +54,7 @@ creates role assignments for the managed identity (ACR pull, Key Vault). Contrib
 
 ```bash
 azd auth login            # or just run the AppHost without Azure
-dotnet run --project src/AgenticSdlc.AppHost
+dotnet run --project src/AgentOs.AppHost
 ```
 
 The AppHost runs Postgres as a local container + API + Web + the Aspire dashboard, with

@@ -20,9 +20,9 @@ If the output has no line starting with `10.`, check `global.json` at the repo r
 From the `D:\LuanVan\prototype\` folder:
 
 ```bash
-dotnet restore AgenticSdlc.sln
-dotnet build  AgenticSdlc.sln --configuration Release
-dotnet test   AgenticSdlc.sln --configuration Release
+dotnet restore AgentOs.sln
+dotnet build  AgentOs.sln --configuration Release
+dotnet test   AgentOs.sln --configuration Release
 ```
 
 Phase 1 has only 1 smoke test; the expected result is `Passed: 1`.
@@ -32,7 +32,7 @@ Phase 1 has only 1 smoke test; the expected result is `Passed: 1`.
 Use .NET User Secrets so keys are never committed:
 
 ```bash
-cd src/AgenticSdlc.Api
+cd src/AgentOs.Api
 dotnet user-secrets init
 dotnet user-secrets set "Llm:Anthropic:ApiKey"  "sk-ant-..."
 dotnet user-secrets set "Llm:AzureOpenAI:ApiKey" "..."
@@ -44,7 +44,7 @@ Secrets are stored in `%APPDATA%\Microsoft\UserSecrets\<UserSecretsId>\secrets.j
 ## 4. Run the API locally
 
 ```bash
-cd src/AgenticSdlc.Api
+cd src/AgentOs.Api
 dotnet run
 ```
 
@@ -94,13 +94,13 @@ The CI workflow reads these secrets for the experimental tests that call a real 
 
 ## 8. One-shot local dev — Aspire AppHost (Postgres + Keycloak + API + Web)
 
-`AgenticSdlc.AppHost` is an Aspire AppHost: one `dotnet run` brings up every dev dependency in
+`AgentOs.AppHost` is an Aspire AppHost: one `dotnet run` brings up every dev dependency in
 containers (Postgres + Keycloak) and starts the API + Blazor Web alongside them, with connection
 strings + the OIDC authority wired across via Aspire service discovery — no docker-compose, no
 hand-edited env vars.
 
 ```bash
-dotnet run --project src/AgenticSdlc.AppHost
+dotnet run --project src/AgentOs.AppHost
 ```
 
 Open the Aspire dashboard URL printed in the console for live logs, traces, and the resource
