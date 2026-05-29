@@ -33,7 +33,7 @@
     <Company>HUBT — Hanoi University of Business and Technology</Company>
     <Product>Agentic SDLC (.NET)</Product>
     <Copyright>© 2026 Nguyen Minh Hoang. MIT License.</Copyright>
-    <RepositoryUrl>https://github.com/&lt;your-org-or-user&gt;/agentic-sdlc-net</RepositoryUrl>
+    <RepositoryUrl>https://github.com/&lt;your-org-or-user&gt;/agentos</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 </Project>

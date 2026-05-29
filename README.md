@@ -4,7 +4,7 @@
 > coordinates specialist agents — Requirements → Code → Tests → QA — over a provider-agnostic
 > LLM gateway, on a multi-tenant runtime with row-level isolation and a Blazor "Agent Studio" UI.
 
-[![CI](https://github.com/hoangsnowy/agentic-sdlc-net/actions/workflows/ci.yml/badge.svg)](https://github.com/hoangsnowy/agentic-sdlc-net/actions/workflows/ci.yml)
+[![CI](https://github.com/hoangsnowy/AgentOs/actions/workflows/ci.yml/badge.svg)](https://github.com/hoangsnowy/AgentOs/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4)
 ![C#](https://img.shields.io/badge/C%23-14-239120)
@@ -103,8 +103,8 @@ Docker (used by Aspire to run Postgres + Keycloak). LLM keys are optional — th
 provider runs the pipeline offline.
 
 ```bash
-git clone https://github.com/hoangsnowy/agentic-sdlc-net.git
-cd agentic-sdlc-net
+git clone https://github.com/hoangsnowy/AgentOs.git
+cd agentos
 
 dotnet restore AgentOs.slnx
 dotnet build   AgentOs.slnx -c Release

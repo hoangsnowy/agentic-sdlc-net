@@ -1,4 +1,4 @@
-# Contributing to agentic-sdlc-net
+# Contributing to agentos
 
 Thanks for your interest in contributing! This project is a .NET-native multi-agent platform
 for the software development lifecycle. Issues and pull requests are welcome.
@@ -6,8 +6,8 @@ for the software development lifecycle. Issues and pull requests are welcome.
 ## Getting started
 
 ```bash
-git clone https://github.com/hoangsnowy/agentic-sdlc-net.git
-cd agentic-sdlc-net
+git clone https://github.com/hoangsnowy/AgentOs.git
+cd agentos
 dotnet restore AgentOs.sln
 dotnet build   AgentOs.sln -c Release
 dotnet test    AgentOs.sln -c Release
