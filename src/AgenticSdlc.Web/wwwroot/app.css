@@ -2217,3 +2217,35 @@ select {
 .grade.c, .grade.C { background: rgba(217,119,6,.10); color: var(--warn); border-color: rgba(217,119,6,.30); }
 .grade.d, .grade.D { background: rgba(217,119,6,.08); color: var(--warn); border-color: rgba(217,119,6,.20); }
 .grade.f, .grade.F { background: rgba(220,38,38,.10); color: var(--err); border-color: rgba(220,38,38,.30); }
+
+/* =================================================================
+   Components catalog page (/_/components) — visual QA grid
+   ================================================================= */
+.catalog { padding: var(--space-5) var(--space-6); max-width: 1100px; margin: 0 auto; color: var(--text-primary); }
+.catalog-head { margin-bottom: var(--space-5); padding-bottom: var(--space-4); border-bottom: 1px solid var(--border-subtle); }
+.catalog-h { margin: 0 0 4px; font-size: var(--fs-2xl); font-weight: var(--fw-semibold); letter-spacing: -.01em; }
+.catalog-sub { color: var(--text-secondary); font-size: var(--fs-md); margin-bottom: var(--space-3); }
+.catalog-toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.catalog-section { margin-bottom: var(--space-6); }
+.catalog-section-h {
+    margin: 0 0 var(--space-3); font-size: var(--fs-lg); font-weight: var(--fw-semibold);
+    border-bottom: 1px dashed var(--border-subtle); padding-bottom: var(--space-2);
+}
+.catalog-row { display: flex; align-items: center; gap: var(--space-3); }
+.catalog-row-wrap { flex-wrap: wrap; }
+.catalog-tbl { border-collapse: collapse; font-size: var(--fs-sm); }
+.catalog-tbl th, .catalog-tbl td { padding: var(--space-2) var(--space-3); border: 1px solid var(--border-subtle); text-align: left; vertical-align: middle; background: var(--bg-2); }
+.catalog-tbl thead th { background: var(--bg-titlebar); }
+.catalog-icon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: var(--space-2);
+}
+.catalog-icon-cell {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: var(--space-3) var(--space-2);
+    background: var(--bg-2); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: var(--fs-xs); font-family: var(--mono);
+}
+.catalog-icon-cell span { color: var(--text-tertiary); }
