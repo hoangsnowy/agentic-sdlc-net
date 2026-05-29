@@ -34,10 +34,7 @@
         </div>
     </div>
 
-    <div class="desktop-clock">
-        <div class="clock-time">@DateTime.Now.ToString("HH:mm")</div>
-        <div class="clock-date">@DateTime.Now.ToString("dddd, d MMMM yyyy")</div>
-    </div>
+    @* Clock removed — TopBar clock is the single source. KDE Plasma + macOS convention. *@
 </div>
 
 <ContextMenu Show="_ctxShow" X="_ctxX" Y="_ctxY" OnClose="@(() => _ctxShow = false)">
