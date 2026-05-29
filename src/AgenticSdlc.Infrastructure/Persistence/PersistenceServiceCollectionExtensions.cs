@@ -1,6 +1,7 @@
 // DI for the persistence layer. Phase 8.5 — Postgres required by default.
 // Set Persistence:RequireDatabase=false (env var Persistence__RequireDatabase=false) to opt
 // into the legacy in-memory no-op repos (tests + Codespaces without Docker only).
+using AgenticSdlc.Application.Identity;
 using AgenticSdlc.Application.Persistence;
 using AgenticSdlc.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -35,6 +36,7 @@ public static class PersistenceServiceCollectionExtensions
             services.AddDbContext<AgenticSdlcDbContext>(opt => opt.UseNpgsql(connectionString));
             services.AddScoped<IPipelineRunRepository, PipelineRunRepository>();
             services.AddScoped<IOrchestrationRepository, OrchestrationRepository>();
+            services.AddScoped<ITenantsRepository, TenantsRepository>();
             return services;
         }
 
@@ -49,6 +51,7 @@ public static class PersistenceServiceCollectionExtensions
 
         services.AddSingleton<IPipelineRunRepository, NullPipelineRunRepository>();
         services.AddSingleton<IOrchestrationRepository, NullOrchestrationRepository>();
+        services.AddSingleton<ITenantsRepository, NullTenantsRepository>();
         return services;
     }
 

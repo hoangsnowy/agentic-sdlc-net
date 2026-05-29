@@ -7,6 +7,7 @@ using AgenticSdlc.Application.Configuration;
 using AgenticSdlc.Domain.Llm;
 using AgenticSdlc.Infrastructure.Agents;
 using AgenticSdlc.Infrastructure.Configuration;
+using AgenticSdlc.Infrastructure.Identity;
 using AgenticSdlc.Infrastructure.Llm;
 using AgenticSdlc.Infrastructure.Metrics;
 using AgenticSdlc.Infrastructure.Persistence;
@@ -63,11 +64,13 @@ builder.Services.AddOpenApi();
 // /runs* endpoint. /health and / stay public. Auth:Mode = operator (HS256) | keycloak (OIDC).
 builder.Services.AddJwtAuth(builder.Configuration);
 
-// Keycloak mode: resolve the tenant from the OIDC token (overrides the default single-tenant context).
+// Keycloak mode: resolve the tenant from the OIDC token (overrides the default single-tenant context)
+// and register the admin REST client so /tenants endpoints can provision realm users.
 if (string.Equals(builder.Configuration["Auth:Mode"], "keycloak", StringComparison.OrdinalIgnoreCase))
 {
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<AgenticSdlc.Application.Identity.ITenantContext, AgenticSdlc.Api.Auth.HttpTenantContext>();
+    builder.Services.AddKeycloakAdmin(builder.Configuration);
 }
 
 // Phase 8.4b — Runtime-mutable configuration store. EF + DataProtection-encrypted when a DB is

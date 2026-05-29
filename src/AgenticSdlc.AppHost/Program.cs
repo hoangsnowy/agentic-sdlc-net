@@ -28,7 +28,14 @@ builder.AddProject<Projects.AgenticSdlc_Api>("api")
     .WithEnvironment("Auth__Mode", "keycloak")
     .WithEnvironment("Auth__Keycloak__Authority",
         ReferenceExpression.Create($"{keycloak.GetEndpoint("http")}/realms/agentic"))
-    .WithEnvironment("Auth__Keycloak__Audience", "agentic-api");
+    .WithEnvironment("Auth__Keycloak__Audience", "agentic-api")
+    // Admin REST — POST /tenants and member-invite endpoints provision realm users via this.
+    .WithEnvironment("Auth__Keycloak__Admin__BaseUrl",
+        ReferenceExpression.Create($"{keycloak.GetEndpoint("http")}"))
+    .WithEnvironment("Auth__Keycloak__Admin__Realm", "agentic")
+    .WithEnvironment("Auth__Keycloak__Admin__Username", "admin")
+    .WithEnvironment("Auth__Keycloak__Admin__Password", "admin")
+    .WithEnvironment("Auth__Keycloak__Admin__ClientId", "admin-cli");
 
 builder.AddProject<Projects.AgenticSdlc_Web>("web")
     .WithReference(db).WaitFor(db)
