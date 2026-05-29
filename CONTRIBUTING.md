@@ -14,7 +14,7 @@ dotnet test    AgentOs.sln -c Release
 ```
 
 Prerequisites: the **.NET 10 SDK** (pinned via `global.json`). No API keys are required —
-the offline `MockLlmClient` path covers build, tests, and the AgentOS demo. See
+unit + integration tests rely on NSubstitute, no live API keys required. See
 [docs/SETUP.md](docs/SETUP.md) for secrets, local Postgres, and CI configuration.
 
 ## Development workflow

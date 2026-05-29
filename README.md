@@ -332,7 +332,7 @@ Issues and PRs are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the de
 - Style: `Nullable` + `TreatWarningsAsErrors` are on across the solution.
 - Commits: [Conventional Commits](https://www.conventionalcommits.org/).
 - The repo ships project-specific Claude Code skills under [`.claude/skills/`](.claude/skills/)
-  (`agent-scaffold`, `fixture-record`, `prompt-tune`, `cost-report`) — they load automatically
+  (`agent-scaffold`, `prompt-tune`, `cost-report`) — they load automatically
   when you open the project root.
 
 ## License
