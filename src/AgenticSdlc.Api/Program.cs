@@ -60,8 +60,15 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNEC
 builder.Services.AddOpenApi();
 
 // Phase 8 — JWT bearer auth. Required on every /pipeline*, /requirement, /code, /test, /qa,
-// /runs* endpoint. /health and / stay public.
+// /runs* endpoint. /health and / stay public. Auth:Mode = operator (HS256) | keycloak (OIDC).
 builder.Services.AddJwtAuth(builder.Configuration);
+
+// Keycloak mode: resolve the tenant from the OIDC token (overrides the default single-tenant context).
+if (string.Equals(builder.Configuration["Auth:Mode"], "keycloak", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<AgenticSdlc.Application.Identity.ITenantContext, AgenticSdlc.Api.Auth.HttpTenantContext>();
+}
 
 // Phase 8.4b — Runtime-mutable configuration store. EF + DataProtection-encrypted when a DB is
 // configured; in-memory fallback otherwise. DataProtection persists its key ring to the DataProtection

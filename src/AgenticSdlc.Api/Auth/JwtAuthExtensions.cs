@@ -6,6 +6,8 @@ using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -30,14 +32,47 @@ public static class JwtAuthExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(config);
 
-        var section = config.GetSection(SectionName);
-        var issuer = section["Issuer"] ?? "agentic-sdlc";
-        var audience = section["Audience"] ?? "agentic-sdlc";
-        var secret = section["Secret"] ?? "dev-only-secret-please-rotate-via-app-config-AT-LEAST-32-bytes";
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+        var mode = config["Auth:Mode"] ?? "operator";
+        var auth = services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme);
 
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
+        if (string.Equals(mode, "keycloak", StringComparison.OrdinalIgnoreCase))
+        {
+            // OIDC resource server: validate Keycloak RS256 tokens via the realm's JWKS.
+            var kc = config.GetSection("Auth:Keycloak");
+            var authority = kc["Authority"] ?? "http://localhost:8080/realms/agentic";
+            var audience = kc["Audience"] ?? "agentic-api";
+            var requireHttps = bool.TryParse(kc["RequireHttpsMetadata"], out var rh) && rh;
+            auth.AddJwtBearer(options =>
+            {
+                options.Authority = authority;
+                options.Audience = audience;
+                options.RequireHttpsMetadata = requireHttps;
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = authority,
+                    ValidateAudience = true,
+                    ValidAudience = audience,
+                    ValidateLifetime = true,
+                    RoleClaimType = ClaimTypes.Role,
+                    NameClaimType = "preferred_username",
+                    ClockSkew = TimeSpan.FromMinutes(2),
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = ctx => { FlattenRealmRoles(ctx); return Task.CompletedTask; },
+                };
+            });
+        }
+        else
+        {
+            // Operator mode (Phase 8): symmetric HS256 token from POST /auth/token.
+            var section = config.GetSection(SectionName);
+            var issuer = section["Issuer"] ?? "agentic-sdlc";
+            var audience = section["Audience"] ?? "agentic-sdlc";
+            var secret = section["Secret"] ?? "dev-only-secret-please-rotate-via-app-config-AT-LEAST-32-bytes";
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+            auth.AddJwtBearer(options =>
             {
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
@@ -51,13 +86,50 @@ public static class JwtAuthExtensions
                     ClockSkew = TimeSpan.FromMinutes(2),
                 };
             });
+        }
 
         services.AddAuthorization(options =>
         {
             options.AddPolicy("Operator", policy => policy.RequireRole("operator"));
+            options.AddPolicy("Admin", policy => policy.RequireRole("admin"));
+            options.AddPolicy("Member", policy => policy.RequireRole("admin", "member"));
         });
 
         return services;
+    }
+
+    /// <summary>Keycloak nests realm roles in the <c>realm_access.roles</c> JSON claim; flatten them into
+    /// standard role claims so <c>RequireRole</c> / policies work.</summary>
+    private static void FlattenRealmRoles(Microsoft.AspNetCore.Authentication.JwtBearer.TokenValidatedContext ctx)
+    {
+        if (ctx.Principal?.Identity is not ClaimsIdentity identity)
+        {
+            return;
+        }
+        var realmAccess = ctx.Principal.FindFirst("realm_access")?.Value;
+        if (string.IsNullOrEmpty(realmAccess))
+        {
+            return;
+        }
+        try
+        {
+            using var doc = JsonDocument.Parse(realmAccess);
+            if (doc.RootElement.TryGetProperty("roles", out var roles) && roles.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var role in roles.EnumerateArray())
+                {
+                    var name = role.GetString();
+                    if (!string.IsNullOrEmpty(name))
+                    {
+                        identity.AddClaim(new Claim(ClaimTypes.Role, name));
+                    }
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            // Malformed claim — ignore; the user simply has no realm roles.
+        }
     }
 
     /// <summary>
