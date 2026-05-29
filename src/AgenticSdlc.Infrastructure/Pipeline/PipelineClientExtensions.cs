@@ -2,9 +2,11 @@
 // Phase 8 — DI registration helpers for the two IPipelineClient impls.
 
 using System;
+using AgenticSdlc.Application.Auth;
 using AgenticSdlc.Application.Pipeline;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AgenticSdlc.Infrastructure.Pipeline;
 
@@ -31,9 +33,9 @@ public static class PipelineClientExtensions
     /// <summary>
     /// Registers the HTTP pipeline client. Use on the Web host when it should call the API over the
     /// network. Reads <c>Api:BaseUrl</c> from configuration; falls back to <c>http://localhost:5080/</c>
-    /// for dev mode. <c>Api:BearerToken</c>, if set, is sent as the static <c>Authorization</c> header
-    /// on every request (Phase 8.2). Phase 8.3 replaces this with a delegating handler that pulls the
-    /// token from the per-circuit session cookie.
+    /// for dev mode. Authentication: the per-call bearer token is read from
+    /// <see cref="IAuthTokenProvider"/> (registered by the host as <see cref="NullAuthTokenProvider"/>
+    /// by default; the Web host overrides with a per-circuit <c>AuthSession</c> after login).
     /// </summary>
     public static IServiceCollection AddHttpPipelineClient(this IServiceCollection services, IConfiguration config)
     {
@@ -48,18 +50,14 @@ public static class PipelineClientExtensions
         {
             baseUrl += "/";
         }
-        var bearerToken = config["Api:BearerToken"];
         services.AddHttpClient(HttpPipelineClient.HttpClientName, c =>
         {
             c.BaseAddress = new Uri(baseUrl);
             c.Timeout = TimeSpan.FromMinutes(10); // pipelines can take minutes when NMax > 1
-            if (!string.IsNullOrWhiteSpace(bearerToken))
-            {
-                c.DefaultRequestHeaders.Authorization =
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearerToken);
-            }
         });
-        services.AddSingleton<IPipelineClient, HttpPipelineClient>();
+        // Default auth provider — Web overrides with AuthSession after the user signs in.
+        services.TryAddSingleton<IAuthTokenProvider>(NullAuthTokenProvider.Instance);
+        services.AddScoped<IPipelineClient, HttpPipelineClient>();
         return services;
     }
 }

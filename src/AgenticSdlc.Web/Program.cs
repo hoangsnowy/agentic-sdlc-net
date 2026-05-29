@@ -2,6 +2,7 @@
 // Blazor Server host for the Agent Studio. Composes the Infrastructure LLM Gateway + 5 agents +
 // PipelineOrchestrator with a circuit-scoped progress sink so the UI can render the run live.
 
+using AgenticSdlc.Application.Auth;
 using AgenticSdlc.Application.Pipeline;
 using AgenticSdlc.Infrastructure.Agents;
 using AgenticSdlc.Infrastructure.Integration;
@@ -72,6 +73,14 @@ builder.Services.AddSingleton<AgenticSdlc.Web.Services.ToastService>();
 
 // Window manager — tracks open desktop-app windows.
 builder.Services.AddSingleton<AgenticSdlc.Web.Services.WindowManagerService>();
+
+// Phase 8.3 — Per-circuit auth session. Holds the JWT after login and exposes it via
+// IAuthTokenProvider so HttpPipelineClient attaches the bearer header per request.
+builder.Services.AddScoped<AgenticSdlc.Web.Services.AuthSession>();
+builder.Services.AddScoped<IAuthTokenProvider>(sp => sp.GetRequiredService<AgenticSdlc.Web.Services.AuthSession>());
+
+// Generic HttpClient factory — LoginOverlay reuses this to POST /auth/token.
+builder.Services.AddHttpClient();
 
 var app = builder.Build();
 

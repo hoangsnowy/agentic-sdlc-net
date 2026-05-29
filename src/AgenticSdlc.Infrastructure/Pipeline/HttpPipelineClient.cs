@@ -16,6 +16,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using AgenticSdlc.Application.Auth;
 using AgenticSdlc.Application.Pipeline;
 using AgenticSdlc.Domain.Pipeline;
 using AgenticSdlc.Domain.Requirements;
@@ -35,12 +36,14 @@ public sealed class HttpPipelineClient : IPipelineClient
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
 
     private readonly IHttpClientFactory _httpFactory;
+    private readonly IAuthTokenProvider _auth;
     private readonly ILogger<HttpPipelineClient> _logger;
 
-    /// <summary>Construct with the named <see cref="IHttpClientFactory"/> + logger.</summary>
-    public HttpPipelineClient(IHttpClientFactory httpFactory, ILogger<HttpPipelineClient> logger)
+    /// <summary>Construct with the named <see cref="IHttpClientFactory"/> + auth + logger.</summary>
+    public HttpPipelineClient(IHttpClientFactory httpFactory, IAuthTokenProvider auth, ILogger<HttpPipelineClient> logger)
     {
         _httpFactory = httpFactory;
+        _auth = auth;
         _logger = logger;
     }
 
@@ -57,6 +60,11 @@ public sealed class HttpPipelineClient : IPipelineClient
             Content = JsonContent.Create(story, options: JsonOpts),
         };
         req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+        var token = await _auth.GetTokenAsync(cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
 
         using var resp = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         if (!resp.IsSuccessStatusCode)
