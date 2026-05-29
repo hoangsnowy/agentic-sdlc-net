@@ -1,20 +1,30 @@
 # agentic-sdlc-net
 
-> A **.NET-native multi-agent AI framework** for the software development lifecycle. A central orchestrator coordinates specialist agents — requirements → code → tests → QA — in a **Leader · Specialists · Quality Loop**, on a **hybrid LLM** backend (Anthropic Claude + Azure OpenAI), all kept behind one provider-agnostic interface.
+> A **.NET-native multi-agent AI platform** for the software development lifecycle. A central
+> orchestrator coordinates specialist agents — requirements → code → tests → QA — in a
+> **Leader · Specialists · Quality Loop**, on a **hybrid LLM** backend (Anthropic Claude +
+> Azure OpenAI) behind one provider-agnostic interface, with a Blazor **AgentOS** desktop UI.
 
 [![CI](https://github.com/hoangsnowy/agentic-sdlc-net/actions/workflows/ci.yml/badge.svg)](https://github.com/hoangsnowy/agentic-sdlc-net/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4)
 
-`agentic-sdlc-net` turns a plain-English user story into reviewed, test-backed C# scaffolding. Five agents collaborate under a central orchestrator; a QA agent scores requirement–code–test consistency and loops until it converges or hits an iteration cap. Built on **.NET 10** and **Clean Architecture**, with a provider-agnostic LLM gateway so you can mix vendors per agent — or swap them entirely — from config alone.
+`agentic-sdlc-net` turns a plain-English user story into reviewed, test-backed C# scaffolding.
+Five agents collaborate under a central orchestrator; a QA agent scores requirement–code–test
+consistency and loops until it converges or hits an iteration cap. Built on **.NET 10** and
+**Clean Architecture**, with a provider-agnostic LLM gateway so you can mix vendors per agent —
+or swap them entirely — from config alone.
 
 ## Features
 
 - **Leader · Specialists · Quality Loop** — the orchestrator assigns work to four specialists; the QA agent gates the result and drives re-runs until consistent or `NMax` is reached.
 - **Hybrid LLM, provider-agnostic** — each agent's provider/model lives in `appsettings.json`; agents depend on `ILlmClient`, never on a vendor SDK directly.
 - **Built-in clients** — Anthropic Claude (`/v1/messages`) and Azure OpenAI (`chat/completions`), plus a deterministic `MockLlmClient` for offline runs and CI.
-- **Per-call telemetry** — token, latency and an estimated USD cost on every LLM call.
-- **Agent Studio (Blazor)** — a realtime web UI to watch the pipeline run live, plus a visual workflow editor.
+- **AgentOS desktop (Blazor)** — a windowed web UI: a Start menu, dock, light/dark themes, and apps for the live pipeline, a visual workflow editor, settings, and system preferences.
+- **Verify build + Open PR** — compile the generated code in a sandbox (`dotnet build`) and open a pull request with it straight from the Pipeline app.
+- **Per-call telemetry** — token, latency, and an estimated USD cost on every LLM call.
+- **Client–server or single-process** — the Web can drive a remote API over SSE, or run the engine in-process for local/offline use.
+- **Bearer auth** — JWT-protected API endpoints; sign-in overlay in the Web.
 - **Optional persistence** — EF Core / Postgres; boots stateless when no connection string is set.
 - **Resilient** — retry with exponential backoff on 429 / 5xx / timeout.
 - **Cloud-ready** — .NET Aspire AppHost + `azd up` to Azure Container Apps.
@@ -40,18 +50,21 @@ src/
 ├── AgenticSdlc.Domain/          # DTOs, pipeline artifacts, ILlmClient, exceptions (BCL only)
 ├── AgenticSdlc.Application/     # Agent interfaces, prompts, metrics + repository contracts
 ├── AgenticSdlc.Infrastructure/  # LLM clients, agent + orchestrator impls, EF Core, DI
-├── AgenticSdlc.Api/             # ASP.NET Core minimal API (+ Scalar UI)
-├── AgenticSdlc.Web/             # Blazor Server "Agent Studio"
+├── AgenticSdlc.Api/             # ASP.NET Core minimal API (+ Scalar UI), JWT auth
+├── AgenticSdlc.Web/             # Blazor Server "AgentOS" desktop
 ├── AgenticSdlc.AppHost/         # .NET Aspire orchestration
 └── AgenticSdlc.ServiceDefaults/ # Shared telemetry / health / resilience
 tests/                           # xUnit unit, integration + E2E
 ```
 
-**LLM Gateway** is the core abstraction. Agents depend on `ILlmClient`; `LlmClientFactory` picks the implementation from `Agents:<Name>:Provider`. Swapping a provider is a config change, not a code change.
+**LLM Gateway** is the core abstraction. Agents depend on `ILlmClient`; `LlmClientFactory` picks
+the implementation from `Agents:<Name>:Provider`. Swapping a provider is a config change, not a
+code change.
 
 ## Quick start
 
-Prerequisites: **.NET 10 SDK** (pinned via `global.json`). Optional: Docker (local Postgres), and an Anthropic and/or Azure OpenAI key — the Demo path needs neither.
+Prerequisites: **.NET 10 SDK** (pinned via `global.json`). Optional: Docker (local Postgres), and
+an Anthropic and/or Azure OpenAI key — the offline Demo path needs neither.
 
 ```bash
 git clone https://github.com/hoangsnowy/agentic-sdlc-net.git
@@ -68,10 +81,18 @@ Run the API — Scalar UI at `http://localhost:5080/scalar/v1`:
 dotnet run --project src/AgenticSdlc.Api
 ```
 
-Run the Agent Studio web UI:
+Run the AgentOS desktop UI at `http://localhost:5180`:
 
 ```bash
 dotnet run --project src/AgenticSdlc.Web
+```
+
+By default the Web runs the engine **in-process** (no API needed). To point it at a remote API
+instead, set `Api:BaseUrl`:
+
+```bash
+$env:Api__BaseUrl = "http://localhost:5080/"   # PowerShell
+export Api__BaseUrl="http://localhost:5080/"    # bash
 ```
 
 Or run the whole stack with the Aspire dashboard:
@@ -80,13 +101,15 @@ Or run the whole stack with the Aspire dashboard:
 dotnet run --project src/AgenticSdlc.AppHost
 ```
 
-Call the end-to-end pipeline:
+Call the end-to-end pipeline directly:
 
 ```bash
 curl -X POST http://localhost:5080/pipeline \
   -H "Content-Type: application/json" \
   -d '{"userStory":"An admin can create, view, edit and delete products; users browse by category.","nMax":3}'
 ```
+
+> No keys handy? The AgentOS desktop runs a fully offline pipeline backed by `MockLlmClient`.
 
 ## Configuration
 
@@ -116,7 +139,8 @@ Per-agent provider/model mapping (`appsettings.json`):
 }
 ```
 
-No keys handy? Run **Demo mode** in Agent Studio (backed by `MockLlmClient`) for a fully offline pipeline.
+LLM keys, the forced provider, and the GitHub integration can also be set at runtime from the
+**Settings** app in AgentOS.
 
 ### Optional: persistence
 
@@ -130,14 +154,21 @@ dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
 
 ## API
 
+All `/pipeline*`, `/requirement`, `/code`, `/test`, `/qa`, `/runs*`, and `/settings*` endpoints
+require a JWT bearer token; `POST /auth/token` exchanges operator credentials for one. `/health`
+and `/` are public.
+
 | Method | Path | Description |
 |---|---|---|
+| `POST` | `/auth/token` | Exchange credentials for a JWT bearer token |
 | `POST` | `/requirement` | Run the Requirement agent on its own |
 | `POST` | `/code` | Run the Coding agent on its own |
 | `POST` | `/test` | Run the Testing agent on its own |
 | `POST` | `/qa` | Run the QA agent on its own |
 | `POST` | `/pipeline` | Run the full end-to-end flow |
-| `GET`  | `/health` | Health check |
+| `POST` | `/pipeline/stream` | Run the pipeline, streaming progress over SSE |
+| `GET`  | `/runs`, `/runs/{id}` | List / fetch persisted runs |
+| `GET`  | `/health` | Health check (public) |
 
 ## Deploy
 
@@ -145,26 +176,15 @@ dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
 azd up   # provisions + deploys to Azure Container Apps via the Aspire AppHost
 ```
 
-## Roadmap
-
-The project is growing from a fixed 5-agent pipeline into a general, **governance-first** agentic platform: pluggable agent runtimes (incl. Semantic Kernel), MCP-based tool execution behind a sandbox + approval gate, an evidence/lineage store, and durable workflows — with the SDLC pipeline as the flagship example. Full plan in [docs/ROADMAP_PLATFORM_V2.md](docs/ROADMAP_PLATFORM_V2.md).
-
-## Phases
-
-| Phase | Title | Status |
-| --- | --- | --- |
-| 1 | Domain + LLM Gateway | done |
-| 2 | 5 agents + JSON schemas | done |
-| 3 | Pipeline orchestrator (Leader–Specialists–Quality Loop) | done |
-| 4 | Minimal API + Scalar | done |
-| 5 | Unit tests + KC1–KC5 benchmark harness | done |
-| 6 | Azure deploy IaC (Bicep + Container Apps) | done (no live deploy yet) |
-| 7 | Blazor Agent Studio + AgentOS desktop chrome | done |
-| **8** | **Web ↔ API production separation + auth + DB secrets** | **in progress (8.1 landed)** — see [docs/PHASE_8.md](docs/PHASE_8.md) |
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full deployment guide and
+[docs/SETUP.md](docs/SETUP.md) for local setup, secrets, and CI.
 
 ## Contributing
 
-Issues and PRs are welcome. Build and test with `dotnet test AgenticSdlc.sln -c Release`; CI runs the same on every push and PR. Commits follow [Conventional Commits](https://www.conventionalcommits.org/). Code, comments and docs are English; `Nullable` and `TreatWarningsAsErrors` are enabled across the solution.
+Issues and PRs are welcome. Build and test with `dotnet test AgenticSdlc.sln -c Release`; CI runs
+the same on every push and PR. Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
+Code, comments, and docs are English; `Nullable` and `TreatWarningsAsErrors` are enabled across the
+solution.
 
 ## License
 
