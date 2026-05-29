@@ -1,8 +1,14 @@
+@using System.Net.Http.Json
 @using AgenticSdlc.Application.Configuration
 @using AgenticSdlc.Domain.Llm
+@using AgenticSdlc.Infrastructure.Llm
+@using AgenticSdlc.Web.Services
 @inject Microsoft.Extensions.Options.IOptions<LlmOptions> LlmOpts
 @inject IRuntimeOverrides Overrides
 @inject Microsoft.Extensions.Configuration.IConfiguration Config
+@inject IHttpClientFactory HttpFactory
+@inject ILlmClientFactory LlmFactory
+@inject AuthSession Auth
 
 <div class="prefs">
     <aside class="prefs-side">
@@ -52,7 +58,26 @@
                 </div>
                 @if (_saved)
                 {
-                    <div class="prefs-saved"><Chip Variant="Chip.ChipVariant.Ok">Saved</Chip> Applied to subsequent LLM calls.</div>
+                    <div class="prefs-saved"><Chip Variant="Chip.ChipVariant.Ok">Saved</Chip> @SaveScopeLabel()</div>
+                }
+
+                <div class="prefs-row" style="margin-top:18px">
+                    <div class="prefs-label"><strong>Test connection</strong><br /><span class="prefs-hint">Send a minimal probe to the configured provider.</span></div>
+                    <Btn OnClick="TestConnection" Disabled="_testing">@(_testing ? "Testing…" : "Test")</Btn>
+                </div>
+                @if (_testResult is not null)
+                {
+                    <div class="prefs-saved">
+                        @if (_testOk)
+                        {
+                            <Chip Variant="Chip.ChipVariant.Ok">OK</Chip>
+                        }
+                        else
+                        {
+                            <Chip Variant="Chip.ChipVariant.Err">Failed</Chip>
+                        }
+                        @_testResult
+                    </div>
                 }
                 break;
 
@@ -79,7 +104,7 @@
                 </div>
                 @if (_saved)
                 {
-                    <div class="prefs-saved"><Chip Variant="Chip.ChipVariant.Ok">Saved</Chip> Applied to subsequent LLM calls.</div>
+                    <div class="prefs-saved"><Chip Variant="Chip.ChipVariant.Ok">Saved</Chip> @SaveScopeLabel()</div>
                 }
                 break;
 
@@ -152,47 +177,175 @@ dotnet user-secrets set "Llm:AzureOpenAi:Endpoint" "https://your-resource.openai
     private string _baseBranch = "";
     private bool _savedGithub;
 
+    // When Api:BaseUrl is set the Web is a thin client; settings live in the API's encrypted
+    // app_config store. Blank → single-process, settings are the in-memory overrides.
+    private string? _apiBase;
+    private bool Split => !string.IsNullOrWhiteSpace(_apiBase);
+
+    private bool _testing;
+    private bool _testOk;
+    private string? _testResult;
+
     protected override void OnInitialized()
     {
+        _apiBase = Config["Api:BaseUrl"];
+        _dbConnected = !string.IsNullOrWhiteSpace(Config.GetConnectionString("DefaultConnection"));
+
+        // In-process: seed from the live overrides. Split: re-seeded from the API below.
         _forceProvider = Overrides.ForceProvider ?? "";
         _anthropicKey = Overrides.AnthropicApiKey ?? "";
         _azureKey = Overrides.AzureApiKey ?? "";
         _azureEndpoint = Overrides.AzureEndpoint ?? "";
-        _dbConnected = !string.IsNullOrWhiteSpace(Config.GetConnectionString("DefaultConnection"));
-
         _githubPat = Overrides.GitHubPat ?? "";
         _repoOwner = Overrides.GitHubRepoOwner ?? "";
         _repoName = Overrides.GitHubRepoName ?? "";
         _baseBranch = Overrides.GitHubBaseBranch ?? "";
     }
 
-    private void Save()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        Overrides.ForceProvider = string.IsNullOrWhiteSpace(_forceProvider) ? null : _forceProvider;
-        Overrides.AnthropicApiKey = string.IsNullOrWhiteSpace(_anthropicKey) ? null : _anthropicKey;
-        Overrides.AzureApiKey = string.IsNullOrWhiteSpace(_azureKey) ? null : _azureKey;
-        Overrides.AzureEndpoint = string.IsNullOrWhiteSpace(_azureEndpoint) ? null : _azureEndpoint;
+        if (firstRender && Split)
+        {
+            try
+            {
+                using var client = ApiClient();
+                var llm = await client.GetFromJsonAsync<Dictionary<string, string?>>("settings/Llm");
+                var gh = await client.GetFromJsonAsync<Dictionary<string, string?>>("settings/Github");
+                if (llm is not null)
+                {
+                    _forceProvider = llm.GetValueOrDefault("Llm:ForceProvider") ?? "";
+                    _anthropicKey = llm.GetValueOrDefault("Llm:Claude:ApiKey") ?? "";
+                    _azureKey = llm.GetValueOrDefault("Llm:AzureOpenAi:ApiKey") ?? "";
+                    _azureEndpoint = llm.GetValueOrDefault("Llm:AzureOpenAi:Endpoint") ?? "";
+                }
+                if (gh is not null)
+                {
+                    _githubPat = gh.GetValueOrDefault("Github:Pat") ?? "";
+                    _repoOwner = gh.GetValueOrDefault("Github:RepoOwner") ?? "";
+                    _repoName = gh.GetValueOrDefault("Github:RepoName") ?? "";
+                    _baseBranch = gh.GetValueOrDefault("Github:BaseBranch") ?? "";
+                }
+                StateHasChanged();
+            }
+            catch { /* API unreachable / unauthorized — keep the seeded values */ }
+        }
+    }
+
+    private HttpClient ApiClient()
+    {
+        var client = HttpFactory.CreateClient();
+        client.BaseAddress = new Uri(_apiBase!.EndsWith('/') ? _apiBase! : _apiBase! + "/");
+        if (!string.IsNullOrWhiteSpace(Auth.Token))
+        {
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", Auth.Token);
+        }
+        return client;
+    }
+
+    private static async Task SetRemoteAsync(HttpClient client, string key, string? value)
+        => await client.PostAsJsonAsync("settings", new { key, value = value ?? "" });
+
+    private async Task Save()
+    {
+        if (Split)
+        {
+            using var client = ApiClient();
+            await SetRemoteAsync(client, "Llm:ForceProvider", _forceProvider);
+            await SetRemoteAsync(client, "Llm:Claude:ApiKey", _anthropicKey);
+            await SetRemoteAsync(client, "Llm:AzureOpenAi:ApiKey", _azureKey);
+            await SetRemoteAsync(client, "Llm:AzureOpenAi:Endpoint", _azureEndpoint);
+        }
+        else
+        {
+            Overrides.ForceProvider = string.IsNullOrWhiteSpace(_forceProvider) ? null : _forceProvider;
+            Overrides.AnthropicApiKey = string.IsNullOrWhiteSpace(_anthropicKey) ? null : _anthropicKey;
+            Overrides.AzureApiKey = string.IsNullOrWhiteSpace(_azureKey) ? null : _azureKey;
+            Overrides.AzureEndpoint = string.IsNullOrWhiteSpace(_azureEndpoint) ? null : _azureEndpoint;
+        }
         _saved = true;
     }
 
-    private void Clear()
+    private async Task Clear()
     {
-        Overrides.ForceProvider = null;
-        Overrides.AnthropicApiKey = null;
-        Overrides.AzureApiKey = null;
-        Overrides.AzureEndpoint = null;
         _forceProvider = _anthropicKey = _azureKey = _azureEndpoint = "";
+        if (Split)
+        {
+            using var client = ApiClient();
+            await SetRemoteAsync(client, "Llm:ForceProvider", "");
+            await SetRemoteAsync(client, "Llm:Claude:ApiKey", "");
+            await SetRemoteAsync(client, "Llm:AzureOpenAi:ApiKey", "");
+            await SetRemoteAsync(client, "Llm:AzureOpenAi:Endpoint", "");
+        }
+        else
+        {
+            Overrides.ForceProvider = null;
+            Overrides.AnthropicApiKey = null;
+            Overrides.AzureApiKey = null;
+            Overrides.AzureEndpoint = null;
+        }
         _saved = true;
     }
 
-    private void SaveGithub()
+    private async Task SaveGithub()
     {
-        Overrides.GitHubPat = string.IsNullOrWhiteSpace(_githubPat) ? null : _githubPat;
-        Overrides.GitHubRepoOwner = string.IsNullOrWhiteSpace(_repoOwner) ? null : _repoOwner;
-        Overrides.GitHubRepoName = string.IsNullOrWhiteSpace(_repoName) ? null : _repoName;
-        Overrides.GitHubBaseBranch = string.IsNullOrWhiteSpace(_baseBranch) ? null : _baseBranch;
+        if (Split)
+        {
+            using var client = ApiClient();
+            await SetRemoteAsync(client, "Github:Pat", _githubPat);
+            await SetRemoteAsync(client, "Github:RepoOwner", _repoOwner);
+            await SetRemoteAsync(client, "Github:RepoName", _repoName);
+            await SetRemoteAsync(client, "Github:BaseBranch", _baseBranch);
+        }
+        else
+        {
+            Overrides.GitHubPat = string.IsNullOrWhiteSpace(_githubPat) ? null : _githubPat;
+            Overrides.GitHubRepoOwner = string.IsNullOrWhiteSpace(_repoOwner) ? null : _repoOwner;
+            Overrides.GitHubRepoName = string.IsNullOrWhiteSpace(_repoName) ? null : _repoName;
+            Overrides.GitHubBaseBranch = string.IsNullOrWhiteSpace(_baseBranch) ? null : _baseBranch;
+        }
         _savedGithub = true;
     }
+
+    private async Task TestConnection()
+    {
+        _testing = true;
+        _testResult = null;
+        try
+        {
+            if (Split)
+            {
+                using var client = ApiClient();
+                using var resp = await client.PostAsync("llm/test", null);
+                var body = await resp.Content.ReadFromJsonAsync<LlmTestResult>();
+                _testOk = body?.Ok ?? false;
+                _testResult = _testOk ? $"{body!.Provider} · {body.Model}" : (body?.Error ?? $"HTTP {(int)resp.StatusCode}");
+            }
+            else
+            {
+                var provider = Config["Agents:Orchestrator:Provider"] ?? "Anthropic";
+                var model = Config["Agents:Orchestrator:Model"] ?? "claude-haiku-4-5";
+                var probe = new LlmRequest("You are a connectivity probe.", "Reply with the single word: OK", model, 0.0, 5);
+                _ = await LlmFactory.Create(provider).SendAsync(probe);
+                _testOk = true;
+                _testResult = $"{provider} · {model}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _testOk = false;
+            _testResult = ex.Message;
+        }
+        finally
+        {
+            _testing = false;
+        }
+    }
+
+    private string SaveScopeLabel()
+        => Split ? "Saved to the API (encrypted store)." : "Applied to subsequent LLM calls.";
+
+    private sealed record LlmTestResult(bool Ok, string? Provider, string? Model, string? Sample, string? Error);
 
     private string EffectiveForceLabel()
     {
