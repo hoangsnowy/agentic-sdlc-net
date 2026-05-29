@@ -136,6 +136,7 @@
             <div class="syn-bottom-body">
                 @if (_bottomTab == 0)
                 {
+                    <p class="muted">Design note — describes the shared state; saved with the graph, not enforced during Run.</p>
                     <textarea class="syn-code" @bind="_graph.StateSchemaJson" spellcheck="false"></textarea>
                 }
                 else if (_bottomTab == 1)
@@ -143,6 +144,10 @@
                     @if (_graph.Guardrails.Count == 0)
                     {
                         <p class="muted">No guardrails yet.</p>
+                    }
+                    else
+                    {
+                        <p class="muted">Reference list — saved with the graph, not yet enforced during Run.</p>
                     }
                     <ul class="syn-guard">@foreach (var g in _graph.Guardrails){<li><Icon Name="lock" Size="12" /> @g</li>}</ul>
                 }
@@ -542,7 +547,9 @@
         var fwd = outs.Where(e => Target(e) is { } t && t.X > node.X).ToList();
 
         var isBranch = node.Category == StepCategory.Evaluator;
-        var underCap = visits.GetValueOrDefault(node.Id) < 3;
+        // Honour the node's editable max-iterations (inspector); fall back to 3 if unset.
+        var cap = node.MaxIterations > 0 ? node.MaxIterations : 3;
+        var underCap = visits.GetValueOrDefault(node.Id) < cap;
         if (isBranch && consistent == false && back.Count > 0 && underCap)
         {
             return Target(back[0]);

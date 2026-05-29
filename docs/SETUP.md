@@ -65,7 +65,7 @@ git commit -m "chore: phase 1 — initial scaffold (.NET 10 solution + CI)"
 git branch -M main
 
 # Create the repo on GitHub (via the web or the gh CLI):
-#   gh repo create agentic-sdlc-net --public --description "Multi-agent AI for SDLC — companion to Master's thesis"
+#   gh repo create agentic-sdlc-net --public --description "A .NET-native multi-agent AI platform for the SDLC"
 git remote add origin https://github.com/<your-username>/agentic-sdlc-net.git
 git push -u origin main
 ```
@@ -82,7 +82,7 @@ In GitHub: **Settings → Secrets and variables → Actions → New repository s
 | `AZURE_OPENAI_ENDPOINT` | https://\<resource\>.openai.azure.com |
 | `AZURE_OPENAI_API_KEY` | ... |
 
-Phase 5 (experimental tests with a real LLM) will add a workflow that reads these secrets.
+The CI workflow reads these secrets for the experimental tests that call a real LLM.
 
 ## 7. Branch protection (recommended)
 
@@ -94,4 +94,4 @@ Phase 5 (experimental tests with a real LLM) will add a workflow that reads thes
 
 ---
 
-**Next phase:** Phase 2 — LLM Gateway. Will add `ILlmClient`, `ClaudeClient`, `AzureOpenAiClient` and DI registration. The detailed guide will be updated in `docs/PHASE_2.md`.
+Once set up, see the [README](../README.md) for running the API, the AgentOS desktop, and the pipeline.

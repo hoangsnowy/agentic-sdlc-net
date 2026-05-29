@@ -17,6 +17,30 @@
 
 <body>
     <Routes @rendermode="@(new Microsoft.AspNetCore.Components.Web.InteractiveServerRenderMode(prerender: false))" />
+
+    @* Themed Blazor reconnection modal — overrides the framework's default white box. Blazor toggles the
+       components-reconnect-{show,failed,rejected} classes on this element. *@
+    <div id="components-reconnect-modal" class="reconnect-modal">
+        <div class="reconnect-card">
+            <div class="reconnect-spinner reconnect-when-show"></div>
+            <div class="reconnect-title reconnect-when-show">Reconnecting…</div>
+            <div class="reconnect-sub reconnect-when-show">Restoring your session.</div>
+
+            <div class="reconnect-icon reconnect-when-failed">⚠</div>
+            <div class="reconnect-title reconnect-when-failed">Connection lost</div>
+            <div class="reconnect-sub reconnect-when-failed">The server is unreachable right now.</div>
+
+            <div class="reconnect-icon reconnect-when-rejected">↻</div>
+            <div class="reconnect-title reconnect-when-rejected">Session ended</div>
+            <div class="reconnect-sub reconnect-when-rejected">Reload the page to continue.</div>
+
+            <div class="reconnect-actions">
+                <button class="reconnect-btn reconnect-when-failed" onclick="window.Blazor.reconnect()">Retry now</button>
+                <button class="reconnect-btn reconnect-when-rejected" onclick="location.reload()">Reload</button>
+            </div>
+        </div>
+    </div>
+
     <script src="_content/Z.Blazor.Diagrams/script.min.js"></script>
     <script src="theme.js"></script>
     <script src="_framework/blazor.web.js"></script>

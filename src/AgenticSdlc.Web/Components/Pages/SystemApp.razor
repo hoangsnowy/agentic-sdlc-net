@@ -2,6 +2,7 @@
 
 @using AgenticSdlc.Web.Services
 @inject ToastService Toasts
+@inject WindowManagerService WM
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject AuthSession Auth
@@ -25,12 +26,12 @@
                     <p class="prefs-sub">Workspace + focus behaviour.</p>
                 </div>
                 <div class="prefs-row">
-                    <div class="prefs-label"><strong>Focus mode</strong><br /><span class="prefs-hint">Mute non-critical notifications.</span></div>
-                    <Toggle Checked="_focus" CheckedChanged="@((bool v) => _focus = v)" />
+                    <div class="prefs-label"><strong>Focus mode</strong><br /><span class="prefs-hint">Mute non-critical notifications (warnings + errors still show).</span></div>
+                    <Toggle Checked="_focus" CheckedChanged="OnFocusChanged" />
                 </div>
                 <div class="prefs-row">
-                    <div class="prefs-label"><strong>Auto-minimize on blur</strong><br /><span class="prefs-hint">Send inactive windows to the dock.</span></div>
-                    <Toggle Checked="_autoMin" CheckedChanged="@((bool v) => _autoMin = v)" />
+                    <div class="prefs-label"><strong>Auto-minimize on blur</strong><br /><span class="prefs-hint">Send inactive windows to the dock when another is focused.</span></div>
+                    <Toggle Checked="_autoMin" CheckedChanged="OnAutoMinChanged" />
                 </div>
                 break;
             case "appearance":
@@ -70,7 +71,7 @@
                 </div>
                 <div class="prefs-row">
                     <div class="prefs-label"><strong>Show toasts</strong></div>
-                    <Toggle Checked="_notifs" CheckedChanged="@((bool v) => _notifs = v)" />
+                    <Toggle Checked="_notifs" CheckedChanged="OnNotifsChanged" />
                 </div>
                 <div class="prefs-row">
                     <div class="prefs-label"><strong>Send a test notification</strong></div>
@@ -123,8 +124,34 @@
             _theme = await JS.InvokeAsync<string>("agenticTheme.getTheme");
             _wall = await JS.InvokeAsync<string>("agenticTheme.getWallpaper");
             _glass = await JS.InvokeAsync<int>("agenticTheme.getGlass");
+
+            // Reflect the live singleton state (restored at shell start by AppShellLayout).
+            _notifs = Toasts.ShowToasts;
+            _focus = Toasts.FocusMode;
+            _autoMin = WM.AutoMinimizeOnBlur;
             StateHasChanged();
         }
+    }
+
+    private async Task OnNotifsChanged(bool v)
+    {
+        _notifs = v;
+        Toasts.ShowToasts = v;
+        await JS.InvokeVoidAsync("localStorage.setItem", "pref-show-toasts", v ? "1" : "0");
+    }
+
+    private async Task OnFocusChanged(bool v)
+    {
+        _focus = v;
+        Toasts.FocusMode = v;
+        await JS.InvokeVoidAsync("localStorage.setItem", "pref-focus", v ? "1" : "0");
+    }
+
+    private async Task OnAutoMinChanged(bool v)
+    {
+        _autoMin = v;
+        WM.AutoMinimizeOnBlur = v;
+        await JS.InvokeVoidAsync("localStorage.setItem", "pref-auto-min", v ? "1" : "0");
     }
 
     private async Task OnThemeChanged(ChangeEventArgs e)

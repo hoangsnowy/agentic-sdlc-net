@@ -188,16 +188,16 @@ public sealed class WindowLifecycleTests : IClassFixture<AgentOsPageFixture>
     }
 
     [Fact]
-    public Task StartMenu_Cascading_HoverTools_PushesToast_OnTestNotification()
+    public Task StartMenu_Search_FiltersApps_AndLaunchesTopHitOnEnter()
     {
-        Assert.Skip("scaffolded — covers scenario 8 (Start ⊞ → Tools → Test notification).");
+        Assert.Skip("scaffolded — Kickoff Start menu: typing filters .ko-row results; Enter launches the top hit.");
         return Task.CompletedTask;
     }
 
     [Fact]
-    public Task SystemApp_Tabs_SwitchBody_General_Appearance_About_Session()
+    public Task SystemApp_Tabs_SwitchBody_General_Appearance_Notifications_About_Session()
     {
-        Assert.Skip("scaffolded — covers scenario 11 (.sys-tab.active toggling).");
+        Assert.Skip("scaffolded — covers System app tab switching across .prefs-cat (General/Appearance/Notifications/About/Session).");
         return Task.CompletedTask;
     }
 

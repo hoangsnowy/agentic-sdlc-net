@@ -2,6 +2,7 @@
 // Phase 8.4b — DI for the IAppConfigStore + startup hydration of IRuntimeOverrides from it.
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AgenticSdlc.Application.Configuration;
@@ -17,7 +18,9 @@ public static class AppConfigExtensions
     // app_config keys used to persist the runtime overrides.
     private const string KeyForceProvider = "Llm:ForceProvider";
     private const string KeyAnthropicKey = "Llm:Claude:ApiKey";
+    private const string KeyAnthropicKeys = "Llm:Claude:ApiKeys";       // newline/comma-delimited pool
     private const string KeyAzureKey = "Llm:AzureOpenAi:ApiKey";
+    private const string KeyAzureKeys = "Llm:AzureOpenAi:ApiKeys";      // newline/comma-delimited pool
     private const string KeyAzureEndpoint = "Llm:AzureOpenAi:Endpoint";
     private const string KeyGitHubPat = "Github:Pat";
     private const string KeyGitHubOwner = "Github:RepoOwner";
@@ -65,7 +68,9 @@ public static class AppConfigExtensions
 
         overrides.ForceProvider = await store.GetAsync(KeyForceProvider, ct).ConfigureAwait(false) ?? overrides.ForceProvider;
         overrides.AnthropicApiKey = await store.GetAsync(KeyAnthropicKey, ct).ConfigureAwait(false) ?? overrides.AnthropicApiKey;
+        overrides.AnthropicApiKeys = ParseKeys(await store.GetAsync(KeyAnthropicKeys, ct).ConfigureAwait(false)) is { Count: > 0 } ak ? ak : overrides.AnthropicApiKeys;
         overrides.AzureApiKey = await store.GetAsync(KeyAzureKey, ct).ConfigureAwait(false) ?? overrides.AzureApiKey;
+        overrides.AzureApiKeys = ParseKeys(await store.GetAsync(KeyAzureKeys, ct).ConfigureAwait(false)) is { Count: > 0 } zk ? zk : overrides.AzureApiKeys;
         overrides.AzureEndpoint = await store.GetAsync(KeyAzureEndpoint, ct).ConfigureAwait(false) ?? overrides.AzureEndpoint;
         overrides.GitHubPat = await store.GetAsync(KeyGitHubPat, ct).ConfigureAwait(false) ?? overrides.GitHubPat;
         overrides.GitHubRepoOwner = await store.GetAsync(KeyGitHubOwner, ct).ConfigureAwait(false) ?? overrides.GitHubRepoOwner;
@@ -98,5 +103,20 @@ public static class AppConfigExtensions
         {
             await store.SetAsync(key, value, ct).ConfigureAwait(false);
         }
+    }
+
+    private static readonly char[] KeyPoolSeparators = ['\n', '\r', ','];
+
+    /// <summary>Parse a stored key pool (newline- or comma-delimited) into a distinct, trimmed list.</summary>
+    private static System.Collections.Generic.List<string> ParseKeys(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return new System.Collections.Generic.List<string>();
+        }
+        return value
+            .Split(KeyPoolSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
     }
 }

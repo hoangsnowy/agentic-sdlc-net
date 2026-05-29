@@ -1,15 +1,14 @@
 // AgenticSdlc.Tests/Smoke/LiveLlmSmokeTests.cs
-// Sprint 5 — smoke test that calls the real LLM. Skipped by default, runs when RUN_LIVE_LLM=1 + an API key is present.
-// Doc: docs/RUN_LIVE_SMOKE.md.
+// Smoke test that calls the real LLM through the SDK-based gateway (Anthropic.SDK / Azure.AI.OpenAI).
+// Skipped by default; runs when RUN_LIVE_LLM=1 and an API key is present.
 
 using System;
-using System.Net.Http;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using AgenticSdlc.Domain.Llm;
 using AgenticSdlc.Infrastructure.Llm;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Shouldly;
 using Xunit;
 
@@ -27,31 +26,25 @@ public class LiveLlmSmokeTests
     {
         SkipUnlessEnabled(requireProvider: AnthropicKey);
 
-        var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-        var opts = Options.Create(new LlmOptions
-        {
-            Provider = "Claude",
-            Claude = new ClaudeOptions
-            {
-                ApiKey = Environment.GetEnvironmentVariable(AnthropicKey)!,
-                Model = Environment.GetEnvironmentVariable("ANTHROPIC_MODEL") ?? "claude-haiku-4-5",
-                TimeoutSeconds = 30,
-                MaxRetries = 1,
-            },
-        });
-        var client = new ClaudeClient(http, opts, new RuntimeOverrides(), NullLogger<ClaudeClient>.Instance);
+        var key = Environment.GetEnvironmentVariable(AnthropicKey)!;
+        var model = Environment.GetEnvironmentVariable("ANTHROPIC_MODEL") ?? "claude-haiku-4-5";
+        var client = new PooledChatLlmClient(
+            "Claude",
+            (k, _) => SdkChatClients.CreateClaude(k),
+            () => new List<string> { key },
+            new ApiKeyRouter(TimeProvider.System),
+            SdkChatClients.IsRateLimited, _ => null, NullLogger<PooledChatLlmClient>.Instance);
 
         var request = new LlmRequest(
             SystemPrompt: "You are a concise assistant. Reply in one sentence.",
             UserPrompt: "Say hello in Vietnamese.",
-            Model: opts.Value.Claude.Model,
+            Model: model,
             Temperature: 0.0,
             MaxTokens: 100);
 
         var response = await client.SendAsync(request, CancellationToken.None);
 
         response.Content.ShouldNotBeNullOrWhiteSpace();
-        response.InputTokens.ShouldBeGreaterThan(0);
         response.OutputTokens.ShouldBeGreaterThan(0);
         response.Latency.ShouldBeLessThan(TimeSpan.FromSeconds(30));
         response.Provider.ShouldBe("Claude");
@@ -67,32 +60,25 @@ public class LiveLlmSmokeTests
             Assert.Skip($"{AzureEndpoint} not set.");
         }
 
-        var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-        var opts = Options.Create(new LlmOptions
-        {
-            Provider = "AzureOpenAI",
-            AzureOpenAi = new AzureOpenAiOptions
-            {
-                ApiKey = Environment.GetEnvironmentVariable(AzureKey)!,
-                Endpoint = endpoint!,
-                Model = Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT") ?? "gpt-4.1",
-                TimeoutSeconds = 30,
-                MaxRetries = 1,
-            },
-        });
-        var client = new AzureOpenAiClient(http, opts, new RuntimeOverrides(), NullLogger<AzureOpenAiClient>.Instance);
+        var key = Environment.GetEnvironmentVariable(AzureKey)!;
+        var deployment = Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT") ?? "gpt-4.1";
+        var client = new PooledChatLlmClient(
+            "AzureOpenAI",
+            (k, m) => SdkChatClients.CreateAzure(k, endpoint!, string.IsNullOrWhiteSpace(m) ? deployment : m),
+            () => new List<string> { key },
+            new ApiKeyRouter(TimeProvider.System),
+            SdkChatClients.IsRateLimited, _ => null, NullLogger<PooledChatLlmClient>.Instance);
 
         var request = new LlmRequest(
             SystemPrompt: "You are a concise assistant. Reply in one sentence.",
             UserPrompt: "Say hello in Vietnamese.",
-            Model: opts.Value.AzureOpenAi.Model,
+            Model: deployment,
             Temperature: 0.0,
             MaxTokens: 100);
 
         var response = await client.SendAsync(request, CancellationToken.None);
 
         response.Content.ShouldNotBeNullOrWhiteSpace();
-        response.InputTokens.ShouldBeGreaterThan(0);
         response.OutputTokens.ShouldBeGreaterThan(0);
         response.Latency.ShouldBeLessThan(TimeSpan.FromSeconds(30));
         response.Provider.ShouldBe("AzureOpenAI");

@@ -15,7 +15,7 @@
 
     <span class="dock-sep"></span>
 
-    @foreach (var app in _pinned)
+    @foreach (var app in AppCatalog.Pinned)
     {
         var isOpen = WM.Open.Any(o => o.AppKey == app.Key);
         <button class="dock-item @(isOpen ? "running" : "")"
@@ -30,7 +30,7 @@
     }
 
     @{
-        var floating = WM.Open.Where(w => !_pinned.Any(p => p.Key == w.AppKey)).ToList();
+        var floating = WM.Open.Where(w => !AppCatalog.Pinned.Any(p => p.Key == w.AppKey)).ToList();
     }
     @if (floating.Count > 0)
     {
@@ -57,16 +57,6 @@
     private string AvatarLetter => string.IsNullOrEmpty(_user) ? "?" : _user[..1].ToUpperInvariant();
 
     private System.Threading.Timer? _timer;
-
-    private sealed record PinnedApp(string Key, string Title, string Icon, int Width, int Height);
-
-    private readonly List<PinnedApp> _pinned = new()
-    {
-        new("pipeline", "Pipeline", "play",   920, 620),
-        new("workflow", "Workflow", "graph",  1080, 660),
-        new("settings", "Settings", "gear",   720, 600),
-        new("system",   "System",   "wrench", 760, 600),
-    };
 
     protected override void OnInitialized()
     {
@@ -98,18 +88,19 @@
         _today = now.ToString("dddd, d MMMM yyyy");
     }
 
-    private void Launch(PinnedApp app)
-    {
-        WM.OpenApp(app.Key, app.Title, app.Icon, app.Width, app.Height);
-    }
-
     private void OnTaskClick(AppWindowState w)
     {
         if (w.Minimized) { WM.Restore(w.Id); }
         else { WM.Focus(w.Id); }
     }
 
+    private void Launch(DesktopApp app)
+    {
+        WM.OpenApp(app.Key, app.Title, app.Icon, app.W, app.H);
+    }
+
     private Task ToggleStart() => OnToggleStart.InvokeAsync();
+
 
     public void Dispose()
     {

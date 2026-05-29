@@ -24,12 +24,21 @@ public sealed class ToastService
     /// <summary>Read-only current queue.</summary>
     public IReadOnlyList<Toast> Items => _items;
 
+    /// <summary>Master switch (System → Notifications → "Show toasts"). When off, nothing is shown.</summary>
+    public bool ShowToasts { get; set; } = true;
+
+    /// <summary>Focus mode (System → General). When on, suppresses non-critical (Info/Ok) toasts;
+    /// warnings and errors still surface.</summary>
+    public bool FocusMode { get; set; }
+
     /// <summary>Fires when the queue mutates so the host can re-render.</summary>
     public event Action? Changed;
 
-    /// <summary>Push a new toast.</summary>
+    /// <summary>Push a new toast — unless suppressed by <see cref="ShowToasts"/> / <see cref="FocusMode"/>.</summary>
     public void Show(string title, string message, ToastKind kind = ToastKind.Info)
     {
+        if (!ShowToasts) { return; }
+        if (FocusMode && kind is ToastKind.Info or ToastKind.Ok) { return; }
         _items.Add(Toast.Create(title, message, kind));
         Changed?.Invoke();
     }

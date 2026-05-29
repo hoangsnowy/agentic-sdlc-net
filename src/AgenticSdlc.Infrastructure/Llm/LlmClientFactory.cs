@@ -56,11 +56,12 @@ public sealed class LlmClientFactory : ILlmClientFactory
 
         return effective.Trim().ToUpperInvariant() switch
         {
-            "CLAUDE" or "ANTHROPIC" => _services.GetRequiredService<ClaudeClient>(),
-            "AZUREOPENAI" or "AZURE" or "OPENAI" => _services.GetRequiredService<AzureOpenAiClient>(),
+            "CLAUDE" or "ANTHROPIC" => _services.GetRequiredKeyedService<ILlmClient>("Claude"),
+            "AZUREOPENAI" or "AZURE" or "OPENAI" => _services.GetRequiredKeyedService<ILlmClient>("AzureOpenAI"),
             "MOCK" or "FAKE" or "STUB" => _services.GetRequiredService<MockLlmClient>(),
             "MAF" or "MAF-AZURE" or "AGENTFRAMEWORK" => _services.GetRequiredService<MafChatClient>(),
-            _ => throw new LlmException($"Unknown LLM provider: '{providerName}'. Expected Claude | AzureOpenAI | Mock | MAF."),
+            "REMOTEAGENT" or "REMOTE" or "IDE" => _services.GetRequiredService<RemoteAgentLlmClient>(),
+            _ => throw new LlmException($"Unknown LLM provider: '{providerName}'. Expected Claude | AzureOpenAI | Mock | MAF | RemoteAgent."),
         };
     }
 }

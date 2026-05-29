@@ -4,6 +4,7 @@
 using AgenticSdlc.Api.Auth;
 using AgenticSdlc.Api.Endpoints;
 using AgenticSdlc.Application.Configuration;
+using AgenticSdlc.Domain.Llm;
 using AgenticSdlc.Infrastructure.Agents;
 using AgenticSdlc.Infrastructure.Configuration;
 using AgenticSdlc.Infrastructure.Llm;
@@ -68,6 +69,10 @@ builder.Services.AddJwtAuth(builder.Configuration);
 builder.Services.AddDataProtection();
 builder.Services.AddAppConfigStore(builder.Configuration);
 
+// Remote dev-IDE agent transport — SignalR hub + the broker->hub bridge (Increment 2).
+builder.Services.AddSignalR();
+builder.Services.AddHostedService<AgenticSdlc.Api.RemoteAgent.RemoteAgentTransport>();
+
 var app = builder.Build();
 
 app.UseAuthentication();
@@ -126,5 +131,30 @@ app.MapGet("/health", (Microsoft.Extensions.Options.IOptions<AgenticSdlc.Domain.
 app.MapAuthEndpoints();
 app.MapPipelineEndpoints();
 app.MapSettingsEndpoints();
+app.MapHub<AgenticSdlc.Api.RemoteAgent.RemoteAgentHub>(AgenticSdlc.Api.RemoteAgent.RemoteAgentHub.Path);
+
+// Settings "Test connection" — probe the configured provider with a minimal call. Uses the
+// Orchestrator agent's provider+model (a matched, cheap pair; Haiku by default). Returns ok/error
+// rather than throwing so the UI can show a clean result. Mock provider returns a stub → ok.
+app.MapPost("/llm/test", async (ILlmClientFactory factory, IConfiguration cfg, CancellationToken ct) =>
+{
+    var provider = cfg["Agents:Orchestrator:Provider"] ?? "Anthropic";
+    var model = cfg["Agents:Orchestrator:Model"] ?? "claude-haiku-4-5";
+    try
+    {
+        var client = factory.Create(provider);
+        var probe = new LlmRequest("You are a connectivity probe.", "Reply with the single word: OK", model, 0.0, 5);
+        var resp = await client.SendAsync(probe, ct).ConfigureAwait(false);
+        return Results.Ok(new { ok = true, provider = client.Provider, model, sample = resp.Content?.Trim() });
+    }
+    catch (Exception ex)
+    {
+        return Results.Ok(new { ok = false, provider, model, error = ex.Message });
+    }
+})
+   .WithName("LlmTest")
+   .WithSummary("Probe the configured LLM provider with a minimal call")
+   .WithTags("Settings")
+   .RequireAuthorization();
 
 app.Run();

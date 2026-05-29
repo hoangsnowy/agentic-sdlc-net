@@ -35,26 +35,25 @@ public class LlmClientFactoryTests
     }
 
     [Fact]
-    public void Create_Claude_ReturnsClaudeClient()
+    public void Create_Claude_ReturnsClaudeProvider()
     {
         var sp = BuildServices("Mock");
         var factory = sp.GetRequiredService<ILlmClientFactory>();
 
         var client = factory.Create("Claude");
 
-        client.ShouldBeOfType<ClaudeClient>();
+        // SDK-based: a pooled IChatClient wrapper, identified by its provider tag.
         client.Provider.ShouldBe("Claude");
     }
 
     [Fact]
-    public void Create_AzureOpenAI_ReturnsAzureClient()
+    public void Create_AzureOpenAI_ReturnsAzureProvider()
     {
         var sp = BuildServices("Mock");
         var factory = sp.GetRequiredService<ILlmClientFactory>();
 
         var client = factory.Create("AzureOpenAI");
 
-        client.ShouldBeOfType<AzureOpenAiClient>();
         client.Provider.ShouldBe("AzureOpenAI");
     }
 

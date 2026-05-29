@@ -22,11 +22,20 @@ public sealed record AppWindowState(
 public sealed class WindowManagerService
 {
     private readonly List<AppWindowState> _open = new();
+    private readonly List<string> _recent = new();
+    private const int RecentCapacity = 6;
     private int _nextZ = 100;
     private int _cascadeIndex;
 
     /// <summary>Read-only snapshot of currently open windows.</summary>
     public IReadOnlyList<AppWindowState> Open => _open;
+
+    /// <summary>Most-recently-opened app keys, newest first, capped at <see cref="RecentCapacity"/>.</summary>
+    public IReadOnlyList<string> RecentKeys => _recent;
+
+    /// <summary>System → General → "Auto-minimize on blur": when a window gains focus, the others
+    /// are sent to the dock.</summary>
+    public bool AutoMinimizeOnBlur { get; set; }
 
     /// <summary>Fires when the window set or z-order changes.</summary>
     public event Action? Changed;
@@ -34,6 +43,7 @@ public sealed class WindowManagerService
     /// <summary>Open an app window. If one already exists for this key, focus it instead.</summary>
     public AppWindowState OpenApp(string appKey, string title, string icon, int w = 920, int h = 620)
     {
+        TrackRecent(appKey);
         var existing = _open.FirstOrDefault(x => x.AppKey == appKey);
         if (existing is not null)
         {
@@ -68,12 +78,23 @@ public sealed class WindowManagerService
         }
     }
 
-    /// <summary>Bring a window to the top of the z-stack.</summary>
+    /// <summary>Bring a window to the top of the z-stack. When <see cref="AutoMinimizeOnBlur"/> is
+    /// on, the other windows are minimized to the dock.</summary>
     public void Focus(Guid id)
     {
         var i = _open.FindIndex(x => x.Id == id);
         if (i < 0) { return; }
         _open[i] = _open[i] with { Z = ++_nextZ };
+        if (AutoMinimizeOnBlur)
+        {
+            for (var j = 0; j < _open.Count; j++)
+            {
+                if (_open[j].Id != id && !_open[j].Minimized)
+                {
+                    _open[j] = _open[j] with { Minimized = true };
+                }
+            }
+        }
         Changed?.Invoke();
     }
 
@@ -113,6 +134,17 @@ public sealed class WindowManagerService
         {
             _open[i] = _open[i] with { Minimized = false };
             Changed?.Invoke();
+        }
+    }
+
+    /// <summary>Push an app key onto the recents stack (newest first, deduped, capped).</summary>
+    private void TrackRecent(string appKey)
+    {
+        _recent.Remove(appKey);
+        _recent.Insert(0, appKey);
+        if (_recent.Count > RecentCapacity)
+        {
+            _recent.RemoveRange(RecentCapacity, _recent.Count - RecentCapacity);
         }
     }
 }
