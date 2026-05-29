@@ -6,6 +6,7 @@ using AgenticSdlc.Infrastructure.Agents;
 using AgenticSdlc.Infrastructure.Llm;
 using AgenticSdlc.Infrastructure.Metrics;
 using AgenticSdlc.Infrastructure.Persistence;
+using AgenticSdlc.Infrastructure.Pipeline;
 using AgenticSdlc.Infrastructure.Validation;
 using AgenticSdlc.ServiceDefaults;
 using Scalar.AspNetCore;
@@ -36,6 +37,10 @@ else
     builder.Services.AddInMemoryMetrics();
 }
 builder.Services.AddAgents(builder.Configuration);
+
+// Phase 8 — IPipelineClient (in-process, since the API owns the orchestrator) +
+// MutableSinkHolder so /pipeline/stream can route per-request channel sinks.
+builder.Services.AddInProcessPipelineClient();
 
 // Persistence (Postgres). Without ConnectionStrings:DefaultConnection → no-op repos.
 builder.Services.AddPersistence(builder.Configuration);
