@@ -7,6 +7,7 @@ using AgenticSdlc.Application.Configuration;
 using AgenticSdlc.Domain.Llm;
 using AgenticSdlc.Infrastructure.Agents;
 using AgenticSdlc.Infrastructure.Configuration;
+using AgenticSdlc.Infrastructure.Identity;
 using AgenticSdlc.Infrastructure.Llm;
 using AgenticSdlc.Infrastructure.Metrics;
 using AgenticSdlc.Infrastructure.Persistence;
@@ -60,8 +61,17 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNEC
 builder.Services.AddOpenApi();
 
 // Phase 8 — JWT bearer auth. Required on every /pipeline*, /requirement, /code, /test, /qa,
-// /runs* endpoint. /health and / stay public.
+// /runs* endpoint. /health and / stay public. Auth:Mode = operator (HS256) | keycloak (OIDC).
 builder.Services.AddJwtAuth(builder.Configuration);
+
+// Keycloak mode: resolve the tenant from the OIDC token (overrides the default single-tenant context)
+// and register the admin REST client so /tenants endpoints can provision realm users.
+if (string.Equals(builder.Configuration["Auth:Mode"], "keycloak", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<AgenticSdlc.Application.Identity.ITenantContext, AgenticSdlc.Api.Auth.HttpTenantContext>();
+    builder.Services.AddKeycloakAdmin(builder.Configuration);
+}
 
 // Phase 8.4b — Runtime-mutable configuration store. EF + DataProtection-encrypted when a DB is
 // configured; in-memory fallback otherwise. DataProtection persists its key ring to the DataProtection
@@ -131,6 +141,7 @@ app.MapGet("/health", (Microsoft.Extensions.Options.IOptions<AgenticSdlc.Domain.
 app.MapAuthEndpoints();
 app.MapPipelineEndpoints();
 app.MapSettingsEndpoints();
+app.MapTenantEndpoints();
 app.MapHub<AgenticSdlc.Api.RemoteAgent.RemoteAgentHub>(AgenticSdlc.Api.RemoteAgent.RemoteAgentHub.Path);
 
 // Settings "Test connection" — probe the configured provider with a minimal call. Uses the

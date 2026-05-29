@@ -1,6 +1,7 @@
 // DI for the persistence layer. Phase 8.5 — Postgres required by default.
 // Set Persistence:RequireDatabase=false (env var Persistence__RequireDatabase=false) to opt
 // into the legacy in-memory no-op repos (tests + Codespaces without Docker only).
+using AgenticSdlc.Application.Identity;
 using AgenticSdlc.Application.Persistence;
 using AgenticSdlc.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -35,6 +36,7 @@ public static class PersistenceServiceCollectionExtensions
             services.AddDbContext<AgenticSdlcDbContext>(opt => opt.UseNpgsql(connectionString));
             services.AddScoped<IPipelineRunRepository, PipelineRunRepository>();
             services.AddScoped<IOrchestrationRepository, OrchestrationRepository>();
+            services.AddScoped<ITenantsRepository, TenantsRepository>();
             return services;
         }
 
@@ -43,12 +45,13 @@ public static class PersistenceServiceCollectionExtensions
         {
             throw new System.InvalidOperationException(
                 "ConnectionStrings:DefaultConnection is empty but Persistence:RequireDatabase is true. " +
-                "Start Postgres (docker compose up -d) and configure the connection string, or set " +
-                "Persistence:RequireDatabase=false to opt into the legacy no-op repositories.");
+                "Run the AppHost (dotnet run --project src/AgenticSdlc.AppHost) so Aspire wires Postgres, " +
+                "or set Persistence:RequireDatabase=false to opt into the legacy no-op repositories.");
         }
 
         services.AddSingleton<IPipelineRunRepository, NullPipelineRunRepository>();
         services.AddSingleton<IOrchestrationRepository, NullOrchestrationRepository>();
+        services.AddSingleton<ITenantsRepository, NullTenantsRepository>();
         return services;
     }
 
