@@ -9,7 +9,7 @@
 
 <div class="topbar">
     <div class="tb-left">
-        <span class="tb-logo">◆</span>
+        <span class="tb-logo"><Icon Name="diamond" Size="12" /></span>
         <span class="tb-brand">AgentOS</span>
         <span class="tb-sep"></span>
         <span class="tb-workspace">Workspace 1</span>
@@ -44,7 +44,7 @@
     <div class="dd-clock-date">@DateTime.Now.ToString("dddd")</div>
     <div class="dd-clock-sub">@DateTime.Now.ToString("d MMMM yyyy")</div>
     <div class="dd-sep"></div>
-    <button class="dd-item" @onclick="OpenSystem"><span class="dd-ic">⏱</span> Date &amp; time settings</button>
+    <button class="dd-item" @onclick="OpenSystem"><span class="dd-ic"><Icon Name="clock" Size="14" /></span> Date &amp; time settings</button>
 </Dropdown>
 
 <Dropdown Show="_userOpen" ExtraClass="dropdown-user" OnClose="@(() => _userOpen = false)">
@@ -56,11 +56,11 @@
         </div>
     </div>
     <div class="dd-sep"></div>
-    <button class="dd-item" @onclick="OpenSystem"><span class="dd-ic">🛠</span> System settings</button>
-    <button class="dd-item" @onclick="OpenSettings"><span class="dd-ic">⚙</span> App settings</button>
+    <button class="dd-item" @onclick="OpenSystem"><span class="dd-ic"><Icon Name="wrench" Size="14" /></span> System settings</button>
+    <button class="dd-item" @onclick="OpenSettings"><span class="dd-ic"><Icon Name="gear" Size="14" /></span> App settings</button>
     <div class="dd-sep"></div>
-    <button class="dd-item" @onclick="Lock"><span class="dd-ic">🔒</span> Lock screen</button>
-    <button class="dd-item dd-danger" @onclick="SignOut"><span class="dd-ic">⏻</span> Sign out</button>
+    <button class="dd-item" @onclick="Lock"><span class="dd-ic"><Icon Name="lock" Size="14" /></span> Lock screen</button>
+    <button class="dd-item dd-danger" @onclick="SignOut"><span class="dd-ic"><Icon Name="power" Size="14" /></span> Sign out</button>
 </Dropdown>
 
 @code {
@@ -82,7 +82,7 @@
                 .Where(x => !x.Minimized)
                 .OrderByDescending(x => x.Z)
                 .FirstOrDefault();
-            return w is null ? "AgentOS — Desktop" : $"{w.Icon} {w.Title}";
+            return w is null ? "AgentOS — Desktop" : w.Title;
         }
     }
 
@@ -121,13 +121,13 @@
 
     private void OpenSystem()
     {
-        WM.OpenApp("system", "System", "🛠", 700, 560);
+        WM.OpenApp("system", "System", "wrench", 700, 560);
         _userOpen = _clockOpen = false;
     }
 
     private void OpenSettings()
     {
-        WM.OpenApp("settings", "Settings", "⚙", 760, 600);
+        WM.OpenApp("settings", "Settings", "gear", 760, 600);
         _userOpen = false;
     }
 

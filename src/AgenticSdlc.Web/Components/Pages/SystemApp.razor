@@ -8,11 +8,11 @@
 <div class="prefs">
     <aside class="prefs-side">
         <div class="prefs-side-head">System</div>
-        <button class="prefs-cat @(_tab == "general"    ? "active" : "")" @onclick="@(() => _tab = "general")"><span class="prefs-cat-ic">⚙</span> General</button>
-        <button class="prefs-cat @(_tab == "appearance" ? "active" : "")" @onclick="@(() => _tab = "appearance")"><span class="prefs-cat-ic">🎨</span> Appearance</button>
-        <button class="prefs-cat @(_tab == "notifs"     ? "active" : "")" @onclick="@(() => _tab = "notifs")"><span class="prefs-cat-ic">🔔</span> Notifications</button>
-        <button class="prefs-cat @(_tab == "about"      ? "active" : "")" @onclick="@(() => _tab = "about")"><span class="prefs-cat-ic">ℹ</span> About</button>
-        <button class="prefs-cat @(_tab == "session"    ? "active" : "")" @onclick="@(() => _tab = "session")"><span class="prefs-cat-ic">⏻</span> Session</button>
+        <button class="prefs-cat @(_tab == "general"    ? "active" : "")" @onclick="@(() => _tab = "general")"><span class="prefs-cat-ic"><Icon Name="gear"    Size="14" /></span> General</button>
+        <button class="prefs-cat @(_tab == "appearance" ? "active" : "")" @onclick="@(() => _tab = "appearance")"><span class="prefs-cat-ic"><Icon Name="palette" Size="14" /></span> Appearance</button>
+        <button class="prefs-cat @(_tab == "notifs"     ? "active" : "")" @onclick="@(() => _tab = "notifs")"><span class="prefs-cat-ic"><Icon Name="bell"    Size="14" /></span> Notifications</button>
+        <button class="prefs-cat @(_tab == "about"      ? "active" : "")" @onclick="@(() => _tab = "about")"><span class="prefs-cat-ic"><Icon Name="info"    Size="14" /></span> About</button>
+        <button class="prefs-cat @(_tab == "session"    ? "active" : "")" @onclick="@(() => _tab = "session")"><span class="prefs-cat-ic"><Icon Name="power"   Size="14" /></span> Session</button>
     </aside>
 
     <div class="prefs-content">
@@ -95,11 +95,11 @@
                 </div>
                 <div class="prefs-row">
                     <div class="prefs-label"><strong>Lock</strong><br /><span class="prefs-hint">Return to the splash screen.</span></div>
-                    <Btn OnClick="Lock">🔒 Lock</Btn>
+                    <Btn OnClick="Lock"><Icon Name="lock" Size="14" /> Lock</Btn>
                 </div>
                 <div class="prefs-row">
                     <div class="prefs-label"><strong>Sign out</strong><br /><span class="prefs-hint">Clear stored credentials.</span></div>
-                    <Btn Variant="Btn.ButtonVariant.Danger" OnClick="SignOut">⏻ Sign out</Btn>
+                    <Btn Variant="Btn.ButtonVariant.Danger" OnClick="SignOut"><Icon Name="power" Size="14" /> Sign out</Btn>
                 </div>
                 break;
         }

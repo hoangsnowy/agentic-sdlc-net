@@ -16,7 +16,9 @@
          @onmousedown="StartDrag"
          @onmousedown:stopPropagation="true"
          @ondblclick="ToggleMax">
-        <span class="appwin-icon" aria-hidden="true">@W.Icon</span>
+        <span class="appwin-icon" aria-hidden="true">
+            <Icon Name="@W.Icon" Size="14" />
+        </span>
         <span class="appwin-title" id="@TitleId">@W.Title</span>
         <div class="appwin-actions" @onmousedown:stopPropagation="true" @ondblclick:stopPropagation="true">
             <button class="appwin-btn" type="button"
