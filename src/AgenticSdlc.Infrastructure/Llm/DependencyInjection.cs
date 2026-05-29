@@ -42,54 +42,6 @@ public static class LlmGatewayServiceCollectionExtensions
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<ApiKeyRouter>();
 
-        // Named HttpClient — IHttpClientFactory to avoid socket exhaustion.
-        services.AddHttpClient(ClaudeClient.HttpClientName, (sp, http) =>
-        {
-            var opts = sp.GetRequiredService<IOptions<LlmOptions>>().Value.Claude;
-            if (!string.IsNullOrWhiteSpace(opts.Endpoint))
-            {
-                http.BaseAddress = new Uri(opts.Endpoint.TrimEnd('/') + "/");
-            }
-            if (opts.TimeoutSeconds > 0)
-            {
-                http.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
-            }
-        });
-
-        services.AddHttpClient(AzureOpenAiClient.HttpClientName, (sp, http) =>
-        {
-            var opts = sp.GetRequiredService<IOptions<LlmOptions>>().Value.AzureOpenAi;
-            if (!string.IsNullOrWhiteSpace(opts.Endpoint))
-            {
-                http.BaseAddress = new Uri(opts.Endpoint.TrimEnd('/') + "/");
-            }
-            if (opts.TimeoutSeconds > 0)
-            {
-                http.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
-            }
-        });
-
-        // Concrete clients — singleton-ish, but kept Transient so each resolve gets a fresh HttpClient from the factory.
-        services.AddTransient<ClaudeClient>(sp =>
-        {
-            var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient(ClaudeClient.HttpClientName);
-            var opts = sp.GetRequiredService<IOptions<LlmOptions>>();
-            var overrides = sp.GetRequiredService<IRuntimeOverrides>();
-            var router = sp.GetRequiredService<ApiKeyRouter>();
-            var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ClaudeClient>>();
-            return new ClaudeClient(http, opts, overrides, router, logger);
-        });
-
-        services.AddTransient<AzureOpenAiClient>(sp =>
-        {
-            var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient(AzureOpenAiClient.HttpClientName);
-            var opts = sp.GetRequiredService<IOptions<LlmOptions>>();
-            var overrides = sp.GetRequiredService<IRuntimeOverrides>();
-            var router = sp.GetRequiredService<ApiKeyRouter>();
-            var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<AzureOpenAiClient>>();
-            return new AzureOpenAiClient(http, opts, overrides, router, logger);
-        });
-
         services.AddTransient<MockLlmClient>();
         services.AddTransient<MafChatClient>();   // Azure OpenAI via official SDK + Microsoft.Extensions.AI
 
