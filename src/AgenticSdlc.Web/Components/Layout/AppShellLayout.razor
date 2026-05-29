@@ -21,45 +21,113 @@
     </div>
 </div>
 
-@* ===== Start menu — flat launcher anchored above the dock ===== *@
+@* ===== Start menu — Kickoff-style launcher: search · pinned grid · recents · user bar ===== *@
 @if (_startOpen)
 {
     <div class="start-menu-backdrop" @onclick="CloseStart" @oncontextmenu="CloseStart" @oncontextmenu:preventDefault="true"></div>
-    <div class="start-menu start-menu-dock" @onclick:stopPropagation="true" role="menu" aria-label="Start menu">
-        <div class="sm-header">
-            <div class="sm-brand-mark"><Icon Name="diamond" Size="14" /></div>
-            <div>
-                <div class="sm-brand-title">AgentOS</div>
-                <div class="sm-brand-sub">v1.0 · open source</div>
-            </div>
+    <div class="kickoff" @onclick:stopPropagation="true" role="menu" aria-label="Start menu">
+
+        <div class="ko-search">
+            <span class="ko-search-ic"><Icon Name="search" Size="15" /></span>
+            <input class="ko-search-input" type="text" placeholder="Search apps…"
+                   autocomplete="off" spellcheck="false"
+                   value="@_query" @oninput="OnSearch" @onkeydown="OnSearchKey" @ref="_searchRef" />
+            @if (!string.IsNullOrEmpty(_query))
+            {
+                <button class="ko-search-clear" @onclick="ClearSearch" title="Clear" aria-label="Clear search">
+                    <Icon Name="x" Size="13" />
+                </button>
+            }
         </div>
 
-        <div class="sm-section">Apps</div>
-        <button class="sm-item" @onclick="@(() => OpenApp("pipeline", "Pipeline", "play"))">
-            <span class="sm-ic"><Icon Name="play" Size="14" /></span> Pipeline
-        </button>
-        <button class="sm-item" @onclick="@(() => OpenApp("workflow", "Workflow", "graph", 1080, 660))">
-            <span class="sm-ic"><Icon Name="graph" Size="14" /></span> Workflow
-        </button>
-        <button class="sm-item" @onclick="@(() => OpenApp("settings", "Settings", "gear", 720, 600))">
-            <span class="sm-ic"><Icon Name="gear" Size="14" /></span> Settings
-        </button>
-        <button class="sm-item" @onclick="@(() => OpenApp("system", "System", "wrench", 760, 600))">
-            <span class="sm-ic"><Icon Name="wrench" Size="14" /></span> System
-        </button>
+        <div class="ko-body">
+            @if (string.IsNullOrWhiteSpace(_query))
+            {
+                <div class="ko-section-row">
+                    <span class="ko-section">Pinned</span>
+                </div>
+                <div class="ko-grid">
+                    @foreach (var app in AppCatalog.Pinned)
+                    {
+                        <button class="ko-tile" @onclick="@(() => Launch(app))" title="@app.Caption">
+                            <span class="ko-tile-ic"><Icon Name="@app.Icon" Size="22" /></span>
+                            <span class="ko-tile-label">@app.Title</span>
+                        </button>
+                    }
+                </div>
 
-        <div class="sm-sep"></div>
+                @if (_recents.Count > 0)
+                {
+                    <div class="ko-section-row">
+                        <span class="ko-section">Recent</span>
+                    </div>
+                    <div class="ko-list">
+                        @foreach (var app in _recents)
+                        {
+                            <button class="ko-row" @onclick="@(() => Launch(app))">
+                                <span class="ko-row-ic"><Icon Name="@app.Icon" Size="16" /></span>
+                                <span class="ko-row-text">
+                                    <span class="ko-row-title">@app.Title</span>
+                                    <span class="ko-row-cap">@app.Caption</span>
+                                </span>
+                            </button>
+                        }
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="ko-section-row">
+                    <span class="ko-section">Results</span>
+                    <span class="ko-section-count">@_results.Count</span>
+                </div>
+                @if (_results.Count == 0)
+                {
+                    <div class="ko-empty">
+                        <Icon Name="search" Size="22" />
+                        <span>No apps match “@_query”.</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="ko-list">
+                        @foreach (var app in _results)
+                        {
+                            <button class="ko-row" @onclick="@(() => Launch(app))">
+                                <span class="ko-row-ic"><Icon Name="@app.Icon" Size="16" /></span>
+                                <span class="ko-row-text">
+                                    <span class="ko-row-title">@app.Title</span>
+                                    <span class="ko-row-cap">@app.Caption</span>
+                                </span>
+                                <span class="ko-row-cat">@app.Category</span>
+                            </button>
+                        }
+                    </div>
+                }
+            }
+        </div>
 
-        <div class="sm-section">Session</div>
-        <button class="sm-item" @onclick="ShowAbout">
-            <span class="sm-ic"><Icon Name="info" Size="14" /></span> About AgentOS
-        </button>
-        <a class="sm-item" href="https://github.com/hoangsnowy/agentic-sdlc-net" target="_blank" @onclick="CloseStart">
-            <span class="sm-ic"><Icon Name="arrow-square-out" Size="14" /></span> GitHub repo
-        </a>
-        <button class="sm-item sm-danger" @onclick="Lock">
-            <span class="sm-ic"><Icon Name="lock" Size="14" /></span> Lock screen
-        </button>
+        <div class="ko-footer">
+            <button class="ko-user" @onclick="ShowAbout" title="About AgentOS">
+                <span class="ko-avatar">@AvatarLetter</span>
+                <span class="ko-user-text">
+                    <span class="ko-user-name">@(_user ?? "operator")</span>
+                    <span class="ko-user-sub">AgentOS v1.0</span>
+                </span>
+            </button>
+            <div class="ko-footer-actions">
+                <a class="ko-fbtn" href="https://github.com/hoangsnowy/agentic-sdlc-net" target="_blank"
+                   @onclick="CloseStart" title="GitHub repository" aria-label="GitHub repository">
+                    <Icon Name="arrow-square-out" Size="16" />
+                </a>
+                <button class="ko-fbtn" @onclick="ShowAbout" title="About" aria-label="About AgentOS">
+                    <Icon Name="info" Size="16" />
+                </button>
+                <button class="ko-fbtn ko-fbtn-danger" @onclick="Lock" title="Lock screen" aria-label="Lock screen">
+                    <Icon Name="power" Size="16" />
+                </button>
+            </div>
+        </div>
     </div>
 }
 
@@ -85,13 +153,85 @@
 @code {
     private bool _startOpen;
     private bool _aboutOpen;
+    private string _query = "";
+    private string? _user;
+    private ElementReference _searchRef;
+    private bool _focusOnRender;
 
-    private void ToggleStart() => _startOpen = !_startOpen;
+    private string AvatarLetter => string.IsNullOrEmpty(_user) ? "O" : _user[..1].ToUpperInvariant();
+
+    private List<DesktopApp> _recents = new();
+    private List<DesktopApp> _results = new();
+
+    private async Task ToggleStart()
+    {
+        _startOpen = !_startOpen;
+        if (_startOpen)
+        {
+            _query = "";
+            RefreshRecents();
+            _focusOnRender = true;
+            if (_user is null)
+            {
+                try { _user = await JS.InvokeAsync<string?>("localStorage.getItem", "agentic-signed-in"); }
+                catch { /* prerender / JS unavailable */ }
+            }
+        }
+    }
+
     private void CloseStart() => _startOpen = false;
 
-    private void OpenApp(string key, string title, string icon, int w = 920, int h = 620)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        WM.OpenApp(key, title, icon, w, h);
+        if (_focusOnRender)
+        {
+            _focusOnRender = false;
+            try { await _searchRef.FocusAsync(); } catch { /* element gone */ }
+        }
+    }
+
+    private void RefreshRecents()
+    {
+        _recents = WM.RecentKeys
+            .Select(AppCatalog.Find)
+            .Where(a => a is not null)
+            .Cast<DesktopApp>()
+            .ToList();
+    }
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        _query = e.Value?.ToString() ?? "";
+        var q = _query.Trim();
+        _results = string.IsNullOrEmpty(q)
+            ? new()
+            : AppCatalog.All
+                .Where(a => a.Title.Contains(q, StringComparison.OrdinalIgnoreCase)
+                         || a.Caption.Contains(q, StringComparison.OrdinalIgnoreCase)
+                         || a.Category.Contains(q, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+    }
+
+    private void OnSearchKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") { CloseStart(); }
+        else if (e.Key == "Enter")
+        {
+            var first = !string.IsNullOrWhiteSpace(_query) ? _results.FirstOrDefault() : AppCatalog.Pinned.FirstOrDefault();
+            if (first is not null) { Launch(first); }
+        }
+    }
+
+    private void ClearSearch()
+    {
+        _query = "";
+        _results = new();
+        _focusOnRender = true;
+    }
+
+    private void Launch(DesktopApp app)
+    {
+        WM.OpenApp(app.Key, app.Title, app.Icon, app.W, app.H);
         _startOpen = false;
     }
 
