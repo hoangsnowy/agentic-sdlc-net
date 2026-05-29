@@ -1,9 +1,12 @@
-@* Desktop-style icon tile — OnClick (opens app window) or Href (external link). *@
+@* Desktop-style icon tile — OnClick (opens app window) or Href (external link).
+   Icon is a Phosphor name (e.g. "play", "graph") rendered via <Icon>. *@
 
 @if (OnClick.HasDelegate)
 {
-    <button type="button" class="dicon" @onclick="OnClick">
-        <div class="dicon-tile">@Icon</div>
+    <button type="button" class="dicon" @onclick="OnClick" title="@Title">
+        <div class="dicon-tile">
+            <Icon Name="@Icon" Size="28" />
+        </div>
         <div class="dicon-title">@Title</div>
         @if (!string.IsNullOrEmpty(Caption))
         {
@@ -13,8 +16,10 @@
 }
 else
 {
-    <a class="dicon" href="@Href" target="@(Target ?? "_self")">
-        <div class="dicon-tile">@Icon</div>
+    <a class="dicon" href="@Href" target="@(Target ?? "_self")" title="@Title">
+        <div class="dicon-tile">
+            <Icon Name="@Icon" Size="28" />
+        </div>
         <div class="dicon-title">@Title</div>
         @if (!string.IsNullOrEmpty(Caption))
         {

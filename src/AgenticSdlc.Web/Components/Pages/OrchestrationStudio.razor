@@ -21,36 +21,34 @@
     <!-- ============ MAIN (chromeless workspace) ============ -->
     <div class="syn-main">
 
-        <div class="syn-topbar">
-            <div>
-                <h1>Agentic Workflow</h1>
-                <p>Design multi-agent workflows with visual canvas</p>
-            </div>
-            <div style="display:flex; gap:8px; align-items:center;">
-                <button class="syn-theme-toggle" @onclick="ToggleTheme" title="Toggle light/dark theme">
-                    @(_theme == "light" ? "🌙 Dark" : "☀ Light")
-                </button>
-                <a class="syn-close" href="/" title="Back to the pipeline">← Pipeline</a>
-            </div>
-        </div>
-
-        <!-- toolbar -->
+        <!-- compact toolbar — replaces topbar + toolbar bands -->
         <div class="syn-toolbar">
-            <select class="syn-select" value="@_graph.Id" @onchange="OnSelectGraph">
+            <select class="syn-select" value="@_graph.Id" @onchange="OnSelectGraph" title="Active graph">
                 @foreach (var g in _all)
                 {
                     <option value="@g.Id">@g.Name</option>
                 }
             </select>
-            <button class="syn-btn" @onclick="NewGraph">+ New</button>
+            <button class="syn-btn" @onclick="NewGraph" title="New graph">+ New</button>
 
             <div class="syn-spacer"></div>
 
-            <button class="syn-btn" @onclick="Save">💾 Save</button>
-            <span class="syn-live-tag" title="Active LLM provider">⚡ Live · @ActiveProvider</span>
-            <button class="syn-btn green" @onclick="Run" disabled="@_running">▶ @(_running ? "Running…" : "Run")</button>
-            <button class="syn-btn" @onclick="Duplicate">Duplicate</button>
-            <button class="syn-btn ghost" @onclick="DeleteGraph">🗑 Delete</button>
+            <button class="syn-btn" @onclick="Save" title="Save graph">
+                <Icon Name="floppy-disk" Size="13" /> Save
+            </button>
+            <span class="syn-live-tag" title="Active LLM provider">
+                <Icon Name="lightning" Size="11" /> Live · @ActiveProvider
+            </span>
+            <button class="syn-btn green" @onclick="Run" disabled="@_running" title="Run graph">
+                <Icon Name="play" Size="13" /> @(_running ? "Running…" : "Run")
+            </button>
+            <button class="syn-btn" @onclick="Duplicate" title="Duplicate graph">Duplicate</button>
+            <button class="syn-btn ghost" @onclick="DeleteGraph" title="Delete graph">
+                <Icon Name="trash" Size="13" /> Delete
+            </button>
+            <button class="syn-btn ghost" @onclick="@(() => _bottomOpen = !_bottomOpen)" title="@(_bottomOpen ? "Hide bottom panel" : "Show bottom panel")">
+                <Icon Name="@(_bottomOpen ? "minus" : "squares-stack")" Size="13" /> Panel
+            </button>
         </div>
 
         <!-- name + desc -->
@@ -73,10 +71,10 @@
             <CascadingValue Value="_diagram" IsFixed="false">
                 <DiagramCanvas @key="_graph.Id">
                     <Widgets>
-                        <GridWidget Size="26" Mode="GridMode.Point" BackgroundColor="#0c0f14" />
+                        @* BackgroundColor="transparent" lets .syn-canvas tokens win — auto-flip light/dark. *@
+                        <GridWidget Size="26" Mode="GridMode.Point" BackgroundColor="transparent" />
                         <SelectionBoxWidget />
                         <NavigatorWidget Width="190" Height="120"
-                                         ViewStrokeColor="#5cc8ff" NodeColor="#2bd4a6"
                                          Class="syn-navigator" Style="position:absolute; bottom:14px; right:14px;" />
                     </Widgets>
                 </DiagramCanvas>
@@ -85,7 +83,7 @@
             <div class="syn-zoom">
                 <button @onclick="@(() => _diagram.SetZoom(Math.Min(2.0, _diagram.Zoom * 1.2)))">+</button>
                 <button @onclick="@(() => _diagram.SetZoom(Math.Max(0.2, _diagram.Zoom * 0.83)))">−</button>
-                <button @onclick="@(() => _diagram.ZoomToFit(60))" title="Fit">⛶</button>
+                <button @onclick="@(() => _diagram.ZoomToFit(60))" title="Fit"><Icon Name="square" Size="13" /></button>
             </div>
 
             @if (_selected is not null)
@@ -93,7 +91,7 @@
                 <div class="syn-inspector">
                     <div class="ins-head">
                         <span>@StepName(_selected.Data.Type) · node</span>
-                        <button class="ins-x" @onclick="CloseInspector">✕</button>
+                        <button class="ins-x" @onclick="CloseInspector" aria-label="Close inspector"><Icon Name="x" Size="12" /></button>
                     </div>
                     <label>Title
                         <input @bind="_selected.Data.Title" @bind:event="oninput" @bind:after="InspectorChanged" />
@@ -120,12 +118,14 @@
                             <input @bind="RoutesText" @bind:event="oninput" @bind:after="InspectorChanged" />
                         </label>
                     }
-                    <button class="ins-del" @onclick="DeleteSelectedNode">🗑 Delete node</button>
+                    <button class="ins-del" @onclick="DeleteSelectedNode"><Icon Name="trash" Size="13" /> Delete node</button>
                 </div>
             }
         </div>
 
-        <!-- bottom panel -->
+        <!-- bottom panel — collapsible -->
+        @if (_bottomOpen)
+        {
         <div class="syn-bottom">
             <div class="syn-tabs">
                 <div class="syn-tab @(_bottomTab == 0 ? "active" : "")" @onclick="@(() => _bottomTab = 0)">State Schema</div>
@@ -144,7 +144,7 @@
                     {
                         <p class="muted">No guardrails yet.</p>
                     }
-                    <ul class="syn-guard">@foreach (var g in _graph.Guardrails){<li>🛡 @g</li>}</ul>
+                    <ul class="syn-guard">@foreach (var g in _graph.Guardrails){<li><Icon Name="lock" Size="12" /> @g</li>}</ul>
                 }
                 else if (_bottomTab == 2)
                 {
@@ -166,6 +166,7 @@
                 }
             </div>
         </div>
+        }
     </div>
 </div>
 
@@ -177,6 +178,7 @@
     private StepNodeModel? _selected;
 
     private int _bottomTab = 2;
+    private bool _bottomOpen;          // collapsed by default — gives canvas full height
     private string _runInput = string.Empty;
     private readonly List<string> _runLog = [];
     private bool _running;
@@ -204,19 +206,8 @@
         BuildDiagram();
     }
 
-    private string _theme = "dark";
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            _theme = await JS.InvokeAsync<string>("agenticTheme.get");
-            StateHasChanged();
-        }
-    }
-
-    private async Task ToggleTheme()
-        => _theme = await JS.InvokeAsync<string>("agenticTheme.toggle");
+    // Theme + wallpaper now live in System -> Appearance; this studio no longer keeps a
+    // local toggle so there is one canonical theme source.
 
     private void BuildDiagram()
     {
@@ -628,9 +619,9 @@
 
     private static string StepIcon(StepType t) => t switch
     {
-        StepType.Llm => "⚡", StepType.Agent => "◆", StepType.Tool => "🔧", StepType.Evaluator => "◈",
+        StepType.Llm => "↯", StepType.Agent => "◆", StepType.Tool => "⚒", StepType.Evaluator => "◈",
         StepType.Parallel => "⑂", StepType.Merge => "⑃", StepType.Loop => "↻", StepType.Human => "◉",
         StepType.Transform => "⇄", StepType.ExtractJson => "{}", StepType.IfElse => "⌥", StepType.Switch => "⇆",
-        StepType.Print => "🖶", StepType.End => "■", _ => "▣",
+        StepType.Print => "⎙", StepType.End => "■", _ => "▣",
     };
 }

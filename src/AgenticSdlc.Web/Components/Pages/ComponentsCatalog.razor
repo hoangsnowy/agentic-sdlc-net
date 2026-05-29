@@ -1,0 +1,221 @@
+@page "/_/components"
+@inject AgenticSdlc.Web.Services.ToastService Toasts
+
+@* Components catalog — visual QA surface for every UI primitive × variant.
+   Standalone route, not in a window. Reach via http://localhost:5180/_/components *@
+
+<PageTitle>Components — AgentOS</PageTitle>
+
+<div class="catalog">
+    <header class="catalog-head">
+        <h1 class="catalog-h">Components catalog</h1>
+        <div class="catalog-sub">Every primitive × every variant. Use this page after token / chrome changes for a fast eyeball QA.</div>
+        <div class="catalog-toolbar">
+            <Btn OnClick="@(() => SetTheme("light"))">Theme: light</Btn>
+            <Btn OnClick="@(() => SetTheme("dark"))">Theme: dark</Btn>
+            <Btn OnClick="@(() => SetWallpaper("enterprise-light"))">Wallpaper: enterprise-light</Btn>
+            <Btn OnClick="@(() => SetWallpaper("enterprise-dark"))">Wallpaper: enterprise-dark</Btn>
+            <Btn OnClick="@(() => SetWallpaper("aurora"))">Wallpaper: aurora</Btn>
+            <Btn OnClick="@(() => SetWallpaper("midnight"))">Wallpaper: midnight</Btn>
+            <Btn OnClick="@(() => SetWallpaper("sunset"))">Wallpaper: sunset</Btn>
+        </div>
+    </header>
+
+    <section class="catalog-section">
+        <h2 class="catalog-section-h">Icon (mono SVG, 30 names)</h2>
+        <div class="catalog-icon-grid">
+            @foreach (var name in _iconNames)
+            {
+                <div class="catalog-icon-cell" title="@name">
+                    <Icon Name="@name" Size="24" />
+                    <span>@name</span>
+                </div>
+            }
+        </div>
+    </section>
+
+    <section class="catalog-section">
+        <h2 class="catalog-section-h">Btn — variant × size</h2>
+        <table class="catalog-tbl">
+            <thead><tr><th>Size →<br />Variant ↓</th><th>Sm (24)</th><th>Md (32)</th><th>Lg (40)</th><th>Disabled</th></tr></thead>
+            <tbody>
+                <tr>
+                    <th>Default</th>
+                    <td><Btn Size="Btn.ButtonSize.Sm">Save</Btn></td>
+                    <td><Btn Size="Btn.ButtonSize.Md">Save</Btn></td>
+                    <td><Btn ExtraClass="btn-lg">Save</Btn></td>
+                    <td><Btn Disabled="true">Save</Btn></td>
+                </tr>
+                <tr>
+                    <th>Primary</th>
+                    <td><Btn Variant="Btn.ButtonVariant.Primary" Size="Btn.ButtonSize.Sm">Run</Btn></td>
+                    <td><Btn Variant="Btn.ButtonVariant.Primary" Size="Btn.ButtonSize.Md">Run pipeline</Btn></td>
+                    <td><Btn Variant="Btn.ButtonVariant.Primary" ExtraClass="btn-lg">Run pipeline</Btn></td>
+                    <td><Btn Variant="Btn.ButtonVariant.Primary" Disabled="true">Run</Btn></td>
+                </tr>
+                <tr>
+                    <th>Ghost</th>
+                    <td><Btn Variant="Btn.ButtonVariant.Ghost" Size="Btn.ButtonSize.Sm">Cancel</Btn></td>
+                    <td><Btn Variant="Btn.ButtonVariant.Ghost" Size="Btn.ButtonSize.Md">Cancel</Btn></td>
+                    <td><Btn Variant="Btn.ButtonVariant.Ghost" ExtraClass="btn-lg">Cancel</Btn></td>
+                    <td><Btn Variant="Btn.ButtonVariant.Ghost" Disabled="true">Cancel</Btn></td>
+                </tr>
+                <tr>
+                    <th>Danger</th>
+                    <td><Btn Variant="Btn.ButtonVariant.Danger" Size="Btn.ButtonSize.Sm">Delete</Btn></td>
+                    <td><Btn Variant="Btn.ButtonVariant.Danger" Size="Btn.ButtonSize.Md">Delete window</Btn></td>
+                    <td><Btn Variant="Btn.ButtonVariant.Danger" ExtraClass="btn-lg">Delete window</Btn></td>
+                    <td><Btn Variant="Btn.ButtonVariant.Danger" Disabled="true">Delete</Btn></td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section class="catalog-section">
+        <h2 class="catalog-section-h">IconBtn</h2>
+        <div class="catalog-row">
+            <IconBtn Icon="⚙" Title="Settings" />
+            <IconBtn Icon="🔔" Title="Notifications" />
+            <IconBtn Icon="—" Title="Minimize" />
+            <IconBtn Icon="×" Title="Close" />
+            <IconBtn Icon="⤡" Title="Resize" Disabled="true" />
+        </div>
+    </section>
+
+    <section class="catalog-section">
+        <h2 class="catalog-section-h">Badge + Chip</h2>
+        <div class="catalog-row">
+            <span class="badge ok">ok</span>
+            <span class="badge warn">warn</span>
+            <span class="badge err">err</span>
+            <span class="badge info">info</span>
+        </div>
+        <div class="catalog-row" style="margin-top:8px;">
+            <span class="chip chip-ok">success</span>
+            <span class="chip chip-warn">degraded</span>
+            <span class="chip chip-err">failed</span>
+            <span class="chip chip-info">info</span>
+            <span class="chip chip-brand">brand</span>
+        </div>
+    </section>
+
+    <section class="catalog-section">
+        <h2 class="catalog-section-h">Panel</h2>
+        <div class="catalog-row catalog-row-wrap">
+            <Panel Title="Plain panel">
+                <p>Body content goes here. Token-driven background + border.</p>
+            </Panel>
+            <Panel Title="Panel with header actions">
+                <HeaderActions>
+                    <Btn Size="Btn.ButtonSize.Sm" Variant="Btn.ButtonVariant.Ghost">Edit</Btn>
+                    <Btn Size="Btn.ButtonSize.Sm" Variant="Btn.ButtonVariant.Primary">Save</Btn>
+                </HeaderActions>
+                <ChildContent>
+                    <p>Body content. Actions live in the header (right side).</p>
+                </ChildContent>
+            </Panel>
+        </div>
+    </section>
+
+    <section class="catalog-section">
+        <h2 class="catalog-section-h">Field</h2>
+        <div class="catalog-row catalog-row-wrap">
+            <Field Label="Story title" Hint="Short, imperative.">
+                <input type="text" placeholder="Add multi-window support…" />
+            </Field>
+            <Field Label="Description" Hint="Markdown allowed.">
+                <textarea rows="3" placeholder="As a user, I want…"></textarea>
+            </Field>
+            <Field Label="Provider">
+                <select>
+                    <option>Anthropic Claude</option>
+                    <option>Azure OpenAI</option>
+                    <option>Mock</option>
+                </select>
+            </Field>
+            <Field Label="Disabled">
+                <input type="text" value="read-only" disabled />
+            </Field>
+        </div>
+    </section>
+
+    <section class="catalog-section">
+        <h2 class="catalog-section-h">Toggle + Progress + Spinner</h2>
+        <div class="catalog-row catalog-row-wrap">
+            <Toggle Checked="_t1" CheckedChanged="@((bool v) => _t1 = v)" />
+            <Toggle Checked="_t2" CheckedChanged="@((bool v) => _t2 = v)" />
+            <div style="min-width:160px;"><Progress Value="0.0" /></div>
+            <div style="min-width:160px;"><Progress Value="0.5" /></div>
+            <div style="min-width:160px;"><Progress Value="1.0" /></div>
+            <div style="min-width:160px;"><Progress /></div>
+            <Spinner Size="Small" />
+            <Spinner Size="Medium" />
+            <Spinner Size="Large" />
+        </div>
+    </section>
+
+    <section class="catalog-section">
+        <h2 class="catalog-section-h">Grade (0..1 score)</h2>
+        <div class="catalog-row">
+            <Grade Score="0.95" />
+            <Grade Score="0.82" />
+            <Grade Score="0.71" />
+            <Grade Score="0.55" />
+            <Grade Score="0.30" />
+        </div>
+    </section>
+
+    <section class="catalog-section">
+        <h2 class="catalog-section-h">DesktopIcon</h2>
+        <div class="catalog-row catalog-row-wrap">
+            <DesktopIcon Title="Pipeline" Icon="play"             Caption="Run the 5-agent pipeline" Href="#" />
+            <DesktopIcon Title="Workflow" Icon="graph"            Caption="Visual orchestration editor" Href="#" />
+            <DesktopIcon Title="Settings" Icon="gear"             Caption="LLM keys, GitHub integration" Href="#" />
+            <DesktopIcon Title="GitHub"   Icon="arrow-square-out" Caption="Repository" Href="#" />
+        </div>
+    </section>
+
+    <section class="catalog-section">
+        <h2 class="catalog-section-h">Dialog + Toast</h2>
+        <div class="catalog-row">
+            <Btn Variant="Btn.ButtonVariant.Primary" OnClick="@(() => _dlg = true)">Open dialog</Btn>
+            <Btn OnClick="@(() => Toasts.Show("Catalog", "Info toast.",     AgenticSdlc.Web.Services.ToastKind.Info))">Toast: info</Btn>
+            <Btn OnClick="@(() => Toasts.Show("Catalog", "Success toast.",  AgenticSdlc.Web.Services.ToastKind.Ok))">Toast: ok</Btn>
+            <Btn OnClick="@(() => Toasts.Show("Catalog", "Warning toast.",  AgenticSdlc.Web.Services.ToastKind.Warn))">Toast: warn</Btn>
+            <Btn OnClick="@(() => Toasts.Show("Catalog", "Error toast.",    AgenticSdlc.Web.Services.ToastKind.Err))">Toast: err</Btn>
+        </div>
+    </section>
+</div>
+
+<Dialog Show="_dlg" Title="Sample dialog" Width="420" OnClose="@(() => _dlg = false)">
+    <ChildContent>
+        <p>Token-driven dialog: flat <code>--bg-titlebar</code>, <code>--text-primary</code>, <code>--border-subtle</code>.</p>
+        <p>Backdrop blur honours the glass slider.</p>
+    </ChildContent>
+    <Footer>
+        <Btn Variant="Btn.ButtonVariant.Ghost" OnClick="@(() => _dlg = false)">Cancel</Btn>
+        <Btn Variant="Btn.ButtonVariant.Primary" OnClick="@(() => _dlg = false)">OK</Btn>
+    </Footer>
+</Dialog>
+
+<ToastHost />
+
+@code {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private bool _dlg;
+    private bool _t1 = true;
+    private bool _t2;
+
+    private readonly string[] _iconNames = new[]
+    {
+        "play","stop","pause","gear","wrench","hammer","graph","git-pull-request",
+        "arrow-square-out","clock","lock","bell","info","power","palette",
+        "squares-four","arrow-clockwise","diamond","circle-fill","moon","sun",
+        "floppy-disk","trash","lightning","question","device-mobile","minus",
+        "square","squares-stack","x"
+    };
+
+    private Task SetTheme(string t) => JS.InvokeVoidAsync("agenticTheme.applyTheme", t).AsTask();
+    private Task SetWallpaper(string w) => JS.InvokeVoidAsync("agenticTheme.applyWallpaper", w).AsTask();
+}
