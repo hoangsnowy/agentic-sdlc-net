@@ -19,8 +19,15 @@ public interface IRuntimeOverrides
     /// <summary>Overrides <c>Llm:Claude:ApiKey</c>. Empty/null = no override.</summary>
     string? AnthropicApiKey { get; set; }
 
+    /// <summary>DB-backed Anthropic key pool (<c>Llm:Claude:ApiKeys</c>), hydrated from the config store and
+    /// merged into the gateway's key pool for round-robin + rate-limit failover.</summary>
+    System.Collections.Generic.IReadOnlyList<string> AnthropicApiKeys { get; set; }
+
     /// <summary>Overrides <c>Llm:AzureOpenAi:ApiKey</c>. Empty/null = no override.</summary>
     string? AzureApiKey { get; set; }
+
+    /// <summary>DB-backed Azure OpenAI key pool (<c>Llm:AzureOpenAi:ApiKeys</c>), hydrated from the store.</summary>
+    System.Collections.Generic.IReadOnlyList<string> AzureApiKeys { get; set; }
 
     /// <summary>Overrides <c>Llm:AzureOpenAi:Endpoint</c>. Empty/null = no override.</summary>
     string? AzureEndpoint { get; set; }

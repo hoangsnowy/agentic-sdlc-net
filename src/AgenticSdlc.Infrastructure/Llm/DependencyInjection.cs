@@ -94,11 +94,13 @@ public static class LlmGatewayServiceCollectionExtensions
     }
 
     // Distinct key pool: runtime override (Settings) first, then configured ApiKeys, then the single ApiKey.
+    // Pool order: runtime single override, then the DB-backed pool (IAppConfigStore, hydrated into
+    // overrides), then appsettings ApiKeys, then the single appsettings ApiKey.
     private static List<string> ClaudeKeyPool(ClaudeOptions opts, IRuntimeOverrides ov)
-        => Pool(ov.AnthropicApiKey, opts.ApiKeys, opts.ApiKey);
+        => Pool(ov.AnthropicApiKey, ov.AnthropicApiKeys.Concat(opts.ApiKeys), opts.ApiKey);
 
     private static List<string> AzureKeyPool(AzureOpenAiOptions opts, IRuntimeOverrides ov)
-        => Pool(ov.AzureApiKey, opts.ApiKeys, opts.ApiKey);
+        => Pool(ov.AzureApiKey, ov.AzureApiKeys.Concat(opts.ApiKeys), opts.ApiKey);
 
     private static List<string> Pool(string? overrideKey, IEnumerable<string> pool, string singleKey)
     {
