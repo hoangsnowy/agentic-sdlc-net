@@ -16,11 +16,13 @@
 <div class="app-toolbar">
     <div class="app-toolbar-left">
         <button class="app-tb-btn primary" @onclick="RunAsync" disabled="@(_running || string.IsNullOrWhiteSpace(_description))" title="Run pipeline">
-            <span class="app-tb-ic">▶</span> @(_running ? "Running…" : "Run")
+            <span class="app-tb-ic"><Icon Name="play" Size="13" /></span> @(_running ? "Running…" : "Run")
         </button>
         @if (_running)
         {
-            <button class="app-tb-btn" @onclick="Cancel" title="Cancel"><span class="app-tb-ic">⏹</span> Cancel</button>
+            <button class="app-tb-btn" @onclick="Cancel" title="Cancel">
+                <span class="app-tb-ic"><Icon Name="stop" Size="13" /></span> Cancel
+            </button>
         }
         <span class="app-tb-sep"></span>
         <span class="app-tb-lbl">NMax</span>
@@ -30,51 +32,29 @@
         <span class="status-chip mode-live"><span class="tb-dot ok"></span> @ActiveProvider</span>
         @if (_dbConnected)
         {
-            <span class="status-chip db-on">🗄 Postgres</span>
+            <span class="status-chip db-on"><Icon Name="lightning" Size="11" /> Postgres</span>
         }
         else
         {
-            <span class="status-chip db-off">⊘ Stateless</span>
+            <span class="status-chip db-off">Stateless</span>
         }
     </div>
 </div>
 
 <div class="studio-grid">
 
-    <!-- ============ LEFT COLUMN: CONTROLS ============ -->
+    <!-- ============ LEFT COLUMN: USER STORY ============ -->
     <div>
         <div class="card">
-            <h2>Input</h2>
-
+            <h2>User story</h2>
             <label class="field">
-                <span>User story</span>
-                <textarea @bind="_description" placeholder="E.g.: As an administrator, I want to manage products in the catalog with a unique SKU to avoid duplicates."></textarea>
+                <textarea @bind="_description" placeholder="E.g.: As an administrator, I want to manage products in the catalog with a unique SKU to avoid duplicates." rows="8"></textarea>
             </label>
-
-            <label class="field">
-                <span>NMax (max QA iterations)</span>
-                <input type="number" min="1" max="5" @bind="_nmax" />
-            </label>
-
-            <button class="run" @onclick="RunAsync" disabled="@(_running || string.IsNullOrWhiteSpace(_description))">
-                @(_running ? "Running pipeline…" : "▶ Run pipeline")
-            </button>
-            @if (_running)
-            {
-                <button class="ghost" @onclick="Cancel">Cancel</button>
-            }
-
-            <p class="hint">Live mode → provider <strong>@ActiveProvider</strong>. Set API keys + provider on <a href="/settings">Settings</a> (or via <code>dotnet user-secrets</code>).</p>
-        </div>
-
-        <div class="card">
-            <h2>Aggregate metrics (realtime)</h2>
-            <div class="metrics">
-                <div class="metric"><div class="v">@(_tokIn + _tokOut)</div><div class="k">Tokens (@_tokIn↑ / @_tokOut↓)</div></div>
-                <div class="metric"><div class="v">$@_cost.ToString("0.0000")</div><div class="k">Estimated cost</div></div>
-                <div class="metric"><div class="v">@((_latencyMs / 1000.0).ToString("0.0"))s</div><div class="k">Total latency</div></div>
-                <div class="metric"><div class="v">@_qaRounds.Count</div><div class="k">QA rounds</div></div>
-            </div>
+            <p class="hint">
+                Run + NMax live in the toolbar above. Aggregate metrics live in the status bar below.
+                Provider <strong>@ActiveProvider</strong> · set API keys on <a href="/settings">Settings</a>
+                (or <code>dotnet user-secrets</code>).
+            </p>
         </div>
     </div>
 
@@ -84,7 +64,7 @@
             <h2>Agent progress</h2>
             <div class="timeline">
                 <div class="stage leader @LeaderState()">
-                    <div class="dot">◆</div>
+                    <div class="dot"><Icon Name="diamond" Size="14" /></div>
                     <div>
                         <div class="label">Orchestrator <span class="badge info">Leader</span></div>
                         <div class="sub">Assigns the user story to specialists · drives the Quality Loop</div>
@@ -241,7 +221,7 @@
                     <h2>Verify build (sandbox)</h2>
                     <p class="muted">Write the generated files to a temp directory and run <code>dotnet build</code> to check the agent's output actually compiles. Real container sandbox is on the roadmap.</p>
                     <button class="run" @onclick="VerifyBuildAsync" disabled="@_verifying">
-                        @(_verifying ? "Building…" : "🔨 Verify build")
+                        @if (_verifying) { <text>Building…</text> } else { <Icon Name="hammer" Size="14" /> <text> Verify build</text> }
                     </button>
                     @if (_buildResult is not null)
                     {
@@ -268,7 +248,7 @@
                     <h2>Push to GitHub</h2>
                     <p class="muted">Open a pull request with the generated code + tests to a target repo. Set PAT + repo on <a href="/settings">Settings</a>.</p>
                     <button class="run" @onclick="OpenPrAsync" disabled="@_openingPr">
-                        @(_openingPr ? "Opening PR…" : "🚀 Open PR on GitHub")
+                        @if (_openingPr) { <text>Opening PR…</text> } else { <Icon Name="git-pull-request" Size="14" /> <text> Open PR on GitHub</text> }
                     </button>
                     @if (_prUrl is not null)
                     {
@@ -285,7 +265,7 @@
         {
             <div class="card">
                 <div class="empty-state">
-                    <div class="big">◇</div>
+                    <div class="big"><Icon Name="diamond" Size="48" /></div>
                     <p>Enter a user story then click <strong>Run pipeline</strong> to watch the 5 agents collaborate in real time.</p>
                 </div>
             </div>
@@ -310,15 +290,15 @@
     {
         @if (_finalStatus == PipelineStatus.Done)
         {
-            <span class="asb-item asb-done">✓ Complete</span>
+            <span class="asb-item asb-done"><Icon Name="circle-fill" Size="10" /> Complete</span>
         }
         else if (_finalStatus == PipelineStatus.MaxIterationReached)
         {
-            <span class="asb-item asb-warn">⚠ NMax reached</span>
+            <span class="asb-item asb-warn"><Icon Name="info" Size="10" /> NMax reached</span>
         }
         else
         {
-            <span class="asb-item asb-err">✕ Failed</span>
+            <span class="asb-item asb-err"><Icon Name="x" Size="10" /> Failed</span>
         }
     }
     else
