@@ -912,10 +912,8 @@ select {
     position: fixed;
     left: 50%; top: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(255,255,255,.90);
-    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    border: 1px solid rgba(255,255,255,.40);
+    background: var(--bg-2);
+    border: 1px solid var(--border-strong);
     border-radius: var(--r-4);
     box-shadow: var(--shadow-3);
     z-index: 9100;
@@ -1449,10 +1447,8 @@ select {
     min-width: 280px; max-width: 380px;
     display: flex; align-items: flex-start; gap: 10px;
     padding: 10px 12px;
-    background: rgba(255,255,255,.92);
-    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    border: 1px solid var(--line-strong);
+    background: var(--bg-2);
+    border: 1px solid var(--border-strong);
     border-left: 3px solid var(--accent);
     border-radius: var(--r-3);
     box-shadow: 0 10px 30px rgba(0,0,0,.25);
@@ -1839,10 +1835,8 @@ select {
     position: fixed;
     z-index: 8900;
     min-width: 200px;
-    background: rgba(255,255,255,.94);
-    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    border: 1px solid rgba(15,23,42,.20);
+    background: var(--bg-2);
+    border: 1px solid var(--border-strong);
     border-radius: var(--r-4);
     box-shadow: 0 14px 36px rgba(0,0,0,.30);
     padding: 4px;
@@ -1863,7 +1857,7 @@ select {
 }
 .ctx-item:hover { background: var(--accent-2-soft); color: var(--accent-2); }
 .ctx-ic { width: 18px; text-align: center; font-size: 13px; }
-.ctx-sep { height: 1px; background: rgba(15,23,42,.12); margin: 4px 6px; }
+.ctx-sep { height: 1px; background: var(--border-subtle); margin: 4px 6px; }
 
 /* =================================================================
    Dropdown — generic flyout. Position via extra class (anchor).
@@ -1876,10 +1870,8 @@ select {
     position: fixed;
     z-index: 8900;
     min-width: 220px;
-    background: rgba(255,255,255,.95);
-    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    border: 1px solid rgba(15,23,42,.16);
+    background: var(--bg-2);
+    border: 1px solid var(--border-strong);
     border-radius: var(--r-4);
     box-shadow: 0 14px 36px rgba(0,0,0,.32);
     padding: 4px;
@@ -1906,7 +1898,7 @@ select {
 .dd-item.dd-danger { color: var(--err); }
 .dd-item.dd-danger:hover { background: rgba(220,38,38,.10); color: var(--err); }
 .dd-ic { width: 18px; text-align: center; font-size: 13px; }
-.dd-sep { height: 1px; background: rgba(15,23,42,.12); margin: 4px 6px; }
+.dd-sep { height: 1px; background: var(--border-subtle); margin: 4px 6px; }
 
 .dd-user-head {
     display: flex; align-items: center; gap: 10px;
