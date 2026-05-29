@@ -60,7 +60,8 @@ public sealed class LlmClientFactory : ILlmClientFactory
             "AZUREOPENAI" or "AZURE" or "OPENAI" => _services.GetRequiredService<AzureOpenAiClient>(),
             "MOCK" or "FAKE" or "STUB" => _services.GetRequiredService<MockLlmClient>(),
             "MAF" or "MAF-AZURE" or "AGENTFRAMEWORK" => _services.GetRequiredService<MafChatClient>(),
-            _ => throw new LlmException($"Unknown LLM provider: '{providerName}'. Expected Claude | AzureOpenAI | Mock | MAF."),
+            "REMOTEAGENT" or "REMOTE" or "IDE" => _services.GetRequiredService<RemoteAgentLlmClient>(),
+            _ => throw new LlmException($"Unknown LLM provider: '{providerName}'. Expected Claude | AzureOpenAI | Mock | MAF | RemoteAgent."),
         };
     }
 }
