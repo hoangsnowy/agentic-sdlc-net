@@ -50,9 +50,9 @@ dotnet run
 
 Browse to:
 
-- Health: <http://localhost:5080/health>
-- Scalar API Reference (UI): <http://localhost:5080/scalar/v1>
-- OpenAPI spec (JSON): <http://localhost:5080/openapi/v1.json>
+- Health: <https://localhost:5080/health>
+- Scalar API Reference (UI): <https://localhost:5080/scalar/v1>
+- OpenAPI spec (JSON): <https://localhost:5080/openapi/v1.json>
 
 ## 5. Push to GitHub
 

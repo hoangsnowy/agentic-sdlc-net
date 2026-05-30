@@ -18,7 +18,7 @@ dotnet test    AgentOs.sln --configuration Release
 dotnet test --filter "FullyQualifiedName~ClaudeClientTests"
 dotnet test --filter "FullyQualifiedName=AgentOs.Tests.Llm.LlmRequestTests.Validate_AllFieldsValid_DoesNotThrow"
 
-# Run the API locally — Scalar UI at http://localhost:5080/scalar/v1
+# Run the API locally — Scalar UI at https://localhost:5080/scalar/v1
 dotnet run --project src/AgentOs.Api
 
 # Local secrets (DO NOT commit). UserSecretsId = "agentos-prototype"

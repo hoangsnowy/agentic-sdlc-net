@@ -2,7 +2,7 @@
 // Connects to the API's SignalR hub, receives codegen requests, runs them through a local CLI
 // (e.g. the Claude Code CLI) on the dev's own quota — so the server spends no API tokens — and
 // streams the result back. Configure via environment variables:
-//   REMOTE_AGENT_HUB    hub URL      (default http://localhost:5080/hubs/remote-agent)
+//   REMOTE_AGENT_HUB    hub URL      (default https://localhost:5080/hubs/remote-agent)
 //   REMOTE_AGENT_TOKEN  pairing token (must match the server's RemoteAgent:PairingToken)
 //   REMOTE_AGENT_CMD    command to run (default "claude")
 //   REMOTE_AGENT_ARGS   command args  (default "-p")  — the prompt is piped to stdin
@@ -10,7 +10,7 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.SignalR.Client;
 
-var hubUrl = Environment.GetEnvironmentVariable("REMOTE_AGENT_HUB") ?? "http://localhost:5080/hubs/remote-agent";
+var hubUrl = Environment.GetEnvironmentVariable("REMOTE_AGENT_HUB") ?? "https://localhost:5080/hubs/remote-agent";
 var token = Environment.GetEnvironmentVariable("REMOTE_AGENT_TOKEN") ?? "";
 var command = Environment.GetEnvironmentVariable("REMOTE_AGENT_CMD") ?? "claude";
 var commandArgs = Environment.GetEnvironmentVariable("REMOTE_AGENT_ARGS") ?? "-p";

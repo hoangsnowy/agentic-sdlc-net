@@ -32,7 +32,7 @@ public static class PipelineClientExtensions
 
     /// <summary>
     /// Registers the HTTP pipeline client. Use on the Web host when it should call the API over the
-    /// network. Reads <c>Api:BaseUrl</c> from configuration; falls back to <c>http://localhost:5080/</c>
+    /// network. Reads <c>Api:BaseUrl</c> from configuration; falls back to <c>https://localhost:5080/</c>
     /// for dev mode. Authentication: the per-call bearer token is read from
     /// <see cref="IAuthTokenProvider"/> (registered by the host as <see cref="NullAuthTokenProvider"/>
     /// by default; the Web host overrides with a per-circuit <c>AuthSession</c> after login).
@@ -44,7 +44,7 @@ public static class PipelineClientExtensions
         var baseUrl = config["Api:BaseUrl"];
         if (string.IsNullOrWhiteSpace(baseUrl))
         {
-            baseUrl = "http://localhost:5080/";
+            baseUrl = "https://localhost:5080/";
         }
         if (!baseUrl.EndsWith('/'))
         {
