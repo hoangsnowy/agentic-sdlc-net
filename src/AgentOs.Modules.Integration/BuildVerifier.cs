@@ -34,9 +34,26 @@ public sealed class BuildVerifier : IBuildVerifier
     }
 
     /// <inheritdoc />
-    public async Task<BuildVerifyResult> VerifyAsync(PipelineResult result, CancellationToken ct)
+    public Task<BuildVerifyResult> VerifyAsync(PipelineResult result, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(result);
+
+        var files = new List<BuildVerifyFile>();
+        if (result.Code?.Files is not null)
+        {
+            files.AddRange(result.Code.Files.Select(f => new BuildVerifyFile(f.Path, f.Content)));
+        }
+        if (result.Tests?.Files is not null)
+        {
+            files.AddRange(result.Tests.Files.Select(f => new BuildVerifyFile(f.Path, f.Content)));
+        }
+        return VerifyFilesAsync(files, ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<BuildVerifyResult> VerifyFilesAsync(IEnumerable<BuildVerifyFile> files, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(files);
 
         var workDir = Path.Combine(Path.GetTempPath(), "agentic-sdlc-build-" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(workDir);
@@ -45,19 +62,14 @@ public sealed class BuildVerifier : IBuildVerifier
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            // 1. Write generated files.
-            var files = new List<(string Path, string Content)>();
-            if (result.Code?.Files is not null)
+            foreach (var file in files)
             {
-                files.AddRange(result.Code.Files.Select(f => (f.Path, f.Content)));
-            }
-            if (result.Tests?.Files is not null)
-            {
-                files.AddRange(result.Tests.Files.Select(f => (f.Path, f.Content)));
-            }
-
-            foreach (var (path, content) in files)
-            {
+                var path = file.Path;
+                var content = file.Content;
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    continue;
+                }
                 var dest = Path.Combine(workDir, path);
                 var destDir = Path.GetDirectoryName(dest);
                 if (!string.IsNullOrEmpty(destDir))

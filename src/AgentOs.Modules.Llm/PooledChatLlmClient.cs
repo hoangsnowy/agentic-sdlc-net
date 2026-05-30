@@ -7,9 +7,12 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AgentOs.Domain.Llm;
+using AgentOs.Domain.Tools;
+using AgentOs.SharedKernel.Identity;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 
@@ -25,7 +28,12 @@ public sealed class PooledChatLlmClient : ILlmClient
     private readonly Func<Exception, TimeSpan?> _retryAfter;
     private readonly ILogger _logger;
     private readonly TimeSpan _baseDelay;
+    private readonly IToolRegistry? _toolRegistry;
+    private readonly ITenantContext? _tenantContext;
+    private readonly IToolPolicy? _toolPolicy;
+    private readonly IToolInvocationLog? _toolInvocationLog;
     private readonly ConcurrentDictionary<string, IChatClient> _clients = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, IChatClient> _wrappedClients = new(StringComparer.Ordinal);
 
     /// <inheritdoc />
     public string Provider { get; }
@@ -38,7 +46,11 @@ public sealed class PooledChatLlmClient : ILlmClient
         Func<Exception, bool> isRateLimited,
         Func<Exception, TimeSpan?> retryAfter,
         ILogger logger,
-        TimeSpan? baseDelay = null)
+        TimeSpan? baseDelay = null,
+        IToolRegistry? toolRegistry = null,
+        ITenantContext? tenantContext = null,
+        IToolPolicy? toolPolicy = null,
+        IToolInvocationLog? toolInvocationLog = null)
     {
         Provider = string.IsNullOrWhiteSpace(provider) ? throw new ArgumentException("provider required", nameof(provider)) : provider;
         _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
@@ -48,6 +60,10 @@ public sealed class PooledChatLlmClient : ILlmClient
         _retryAfter = retryAfter ?? (_ => null);
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _baseDelay = baseDelay ?? TimeSpan.FromSeconds(1);
+        _toolRegistry = toolRegistry;
+        _tenantContext = tenantContext;
+        _toolPolicy = toolPolicy;
+        _toolInvocationLog = toolInvocationLog;
     }
 
     /// <inheritdoc />
@@ -68,11 +84,13 @@ public sealed class PooledChatLlmClient : ILlmClient
             messages.Add(new ChatMessage(ChatRole.System, request.SystemPrompt));
         }
         messages.Add(new ChatMessage(ChatRole.User, request.UserPrompt));
+        var resolvedTools = ResolveTools(request.Tools);
         var options = new ChatOptions
         {
             ModelId = request.Model,
             Temperature = (float)request.Temperature,
             MaxOutputTokens = request.MaxTokens,
+            Tools = resolvedTools.Count > 0 ? resolvedTools.Cast<AITool>().ToList() : null,
         };
 
         var maxAttempts = Math.Max(1, keys.Count);
@@ -82,7 +100,14 @@ public sealed class PooledChatLlmClient : ILlmClient
         {
             cancellationToken.ThrowIfCancellationRequested();
             var key = _router.Acquire(Provider, keys)!;
-            var chat = _clients.GetOrAdd($"{key} {request.Model}", _ => _clientFactory(key, request.Model));
+            var clientCacheKey = $"{key} {request.Model}";
+            var chat = _clients.GetOrAdd(clientCacheKey, _ => _clientFactory(key, request.Model));
+            if (resolvedTools.Count > 0)
+            {
+                // FunctionInvokingChatClient wrapper drives the tool-call loop transparently so the
+                // ILlmClient.SendAsync contract still returns one LlmResponse — the final text turn.
+                chat = _wrappedClients.GetOrAdd(clientCacheKey, _ => chat.AsBuilder().UseFunctionInvocation().Build());
+            }
 
             var stopwatch = Stopwatch.StartNew();
             try
@@ -121,5 +146,31 @@ public sealed class PooledChatLlmClient : ILlmClient
         }
 
         throw new LlmException($"{Provider} rate-limited on all {keys.Count} key(s) after {maxAttempts} attempt(s).", Provider, innerException: last);
+    }
+
+    private List<AIToolFunction> ResolveTools(IReadOnlyList<string>? requested)
+    {
+        var resolved = new List<AIToolFunction>();
+        if (requested is null || requested.Count == 0 || _toolRegistry is null)
+        {
+            return resolved;
+        }
+
+        var tenantId = _tenantContext?.TenantId ?? "anonymous";
+        foreach (var name in requested)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+            var tool = _toolRegistry.Resolve(name);
+            if (tool is null)
+            {
+                _logger.LogWarning("[{Provider}] tool '{Tool}' requested but not registered — dropped.", Provider, name);
+                continue;
+            }
+            resolved.Add(new AIToolFunction(tool, tenantId, runId: null, policy: _toolPolicy, log: _toolInvocationLog));
+        }
+        return resolved;
     }
 }
