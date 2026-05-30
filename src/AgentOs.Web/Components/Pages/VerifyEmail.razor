@@ -1,0 +1,29 @@
+@page "/signup/verify-email"
+@layout AuthLayout
+@attribute [AllowAnonymous]
+
+<PageTitle>Verify your email — AgentOS</PageTitle>
+
+<div class="login-card">
+    <div class="login-brand">
+        <div class="brand-mark"><Icon Name="diamond" Size="14" /></div>
+        <div>
+            <div class="brand-title">Check your inbox</div>
+            <div class="brand-sub">One more step before sign-in</div>
+        </div>
+    </div>
+
+    <div class="login-form">
+        <p class="login-hint">
+            We sent a verification link to your email. Click it to activate the workspace,
+            then come back here to sign in.
+        </p>
+        <a class="btn btn-primary login-btn" href="/login">
+            <span class="btn-ic"><Icon Name="lock" Size="14" /></span>
+            Back to sign in
+        </a>
+        <div class="login-hint">
+            Dev tip: open <a href="http://localhost:8025" target="_blank">MailHog</a> to grab the link.
+        </div>
+    </div>
+</div>

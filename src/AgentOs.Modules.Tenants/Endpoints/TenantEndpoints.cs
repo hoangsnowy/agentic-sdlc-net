@@ -89,66 +89,133 @@ internal static class TenantEndpoints
         .WithTags("Tenants")
         .RequireAuthorization("Admin");
 
-        // Self-service sign-up: any anonymous caller may provision a new tenant + admin user. Open
-        // by design for OSS dev; production deployments should put this behind CAPTCHA / rate-limit
-        // or close it and rely on admin-driven /tenants instead.
+        // Self-service sign-up: dispatches to ITenantSignupService which picks one of three modes
+        // (invite / slug / auto-create) by request shape. Open by design for OSS dev; production
+        // deployments should put this behind CAPTCHA / rate-limit.
         app.MapPost("/tenants/register", async (
             RegisterTenantRequest body,
-            ITenantsRepository repo,
-            IKeycloakAdminClient kc,
+            ITenantSignupService signup,
             CancellationToken ct) =>
         {
-            if (string.IsNullOrWhiteSpace(body.TenantId) ||
-                string.IsNullOrWhiteSpace(body.Username) ||
-                string.IsNullOrWhiteSpace(body.Password))
-            {
-                return Results.BadRequest(new { error = "tenantId, username and password are required" });
-            }
-
-            var existing = await repo.GetAsync(body.TenantId, ct).ConfigureAwait(false);
-            if (existing is not null)
-            {
-                return Results.Conflict(new { error = $"Tenant '{body.TenantId}' already exists" });
-            }
-
-            var record = new TenantRecord(
-                body.TenantId,
-                string.IsNullOrWhiteSpace(body.TenantName) ? body.TenantId : body.TenantName,
-                DateTimeOffset.UtcNow);
-            await repo.AddAsync(record, ct).ConfigureAwait(false);
-
-            string keycloakUserId;
             try
             {
-                keycloakUserId = await kc.CreateUserAsync(
-                    username: body.Username,
-                    email: body.Email ?? string.Empty,
-                    tenantId: body.TenantId,
-                    realmRoles: AdminRole,
-                    sendVerifyEmail: false,
-                    password: body.Password,
-                    ct: ct).ConfigureAwait(false);
+                var outcome = await signup.SignupAsync(new TenantSignupRequest(
+                    Username: body.Username,
+                    Password: body.Password,
+                    Email: body.Email,
+                    TenantId: body.TenantId,
+                    TenantName: body.TenantName,
+                    InviteToken: body.InviteToken), ct).ConfigureAwait(false);
+                return Results.Created(
+                    $"/tenants/{outcome.TenantId}",
+                    new RegisteredTenantResponse(outcome.TenantId, outcome.KeycloakUserId, outcome.Mode.ToString()));
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(
-                    title: "Keycloak provisioning failed",
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status502BadGateway);
+                return Results.BadRequest(new { error = ex.Message });
             }
-
-            return Results.Created($"/tenants/{body.TenantId}", new RegisteredTenantResponse(record, keycloakUserId));
         })
         .WithName("TenantsRegister")
-        .WithSummary("Self-service sign-up: create a tenant + admin user (public)")
+        .WithSummary("Self-service sign-up: invite / slug / auto-create (public)")
         .WithTags("Tenants")
         .AllowAnonymous();
+
+        // Admin-only: mint a stateless invitation token. The returned `url` (signup page + ?invite=)
+        // is what the inviter pastes into an email or chat. Tokens are signed + time-limited; they
+        // cannot be revoked before expiry — keep TTL short for high-trust environments.
+        app.MapPost("/tenants/{tenantId}/invitations", async (
+            string tenantId,
+            CreateInvitationRequest body,
+            ITenantSignupService signup,
+            IAuditLog audit,
+            ITenantContext ctx,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var role = string.IsNullOrWhiteSpace(body.Role) ? "member" : body.Role;
+            if (role is not ("admin" or "member"))
+            {
+                return Results.BadRequest(new { error = "role must be 'admin' or 'member'" });
+            }
+            var ttl = TimeSpan.FromHours(body.TtlHours is > 0 and <= 168 ? body.TtlHours.Value : 24);
+            var minted = signup.CreateInvitation(tenantId, role, body.Email, ttl);
+            var origin = $"{http.Request.Scheme}://{http.Request.Host}";
+            var url = $"{origin}/signup?invite={Uri.EscapeDataString(minted.Token)}";
+            await audit.WriteAsync(new AuditEntry(
+                Guid.NewGuid(), tenantId, ctx.UserId, AuditActions.InvitationMinted,
+                Target: $"role={role}{(body.Email is null ? "" : $",email={body.Email}")}",
+                IpAddress: http.Connection.RemoteIpAddress?.ToString(),
+                UserAgent: http.Request.Headers.UserAgent.ToString(),
+                TimestampUtc: DateTimeOffset.UtcNow), ct).ConfigureAwait(false);
+            return Results.Ok(new CreatedInvitationResponse(minted.Token, url, minted.ExpiresAtUtc));
+        })
+        .WithName("TenantsCreateInvitation")
+        .WithSummary("Mint a signup invitation URL for the tenant (admin only)")
+        .WithTags("Tenants")
+        .RequireAuthorization("Admin");
+
+        // Public preview: decode an invitation token (no side effects). Lets the signup page show
+        // the inviter's tenant + email before the user fills the form.
+        app.MapGet("/tenants/invitations/preview", (
+            string token,
+            ITenantSignupService signup) =>
+        {
+            var preview = signup.PreviewInvitation(token);
+            return preview is null
+                ? Results.NotFound(new { error = "Invitation is invalid or expired" })
+                : Results.Ok(preview);
+        })
+        .WithName("TenantsPreviewInvitation")
+        .WithSummary("Decode an invitation token without consuming it (public)")
+        .WithTags("Tenants")
+        .AllowAnonymous();
+
+        // List members of a tenant — only Admins, scoped to their own tenant by ITenantContext.
+        app.MapGet("/tenants/{tenantId}/members", async (
+            string tenantId,
+            IKeycloakAdminClient kc,
+            ITenantContext ctx,
+            CancellationToken ct) =>
+        {
+            if (!string.Equals(ctx.TenantId, tenantId, StringComparison.Ordinal))
+            {
+                return Results.Forbid();
+            }
+            var members = await kc.ListUsersByTenantAsync(tenantId, max: 200, ct: ct).ConfigureAwait(false);
+            return Results.Ok(members);
+        })
+        .WithName("TenantsListMembers")
+        .WithSummary("List the members of the current tenant (tenant Admin only)")
+        .WithTags("Tenants")
+        .RequireAuthorization("Admin");
+
+        app.MapGet("/tenants/{tenantId}/audit", async (
+            string tenantId,
+            IAuditLog audit,
+            ITenantContext ctx,
+            int? max,
+            CancellationToken ct) =>
+        {
+            if (!string.Equals(ctx.TenantId, tenantId, StringComparison.Ordinal))
+            {
+                return Results.Forbid();
+            }
+            var rows = await audit.ListAsync(tenantId, max ?? 100, ct).ConfigureAwait(false);
+            return Results.Ok(rows);
+        })
+        .WithName("TenantsAudit")
+        .WithSummary("Audit trail for the current tenant (tenant Admin only)")
+        .WithTags("Tenants")
+        .RequireAuthorization("Admin");
 
         app.MapPost("/tenants/{tenantId}/members", async (
             string tenantId,
             InviteMemberRequest body,
             ITenantsRepository repo,
             IKeycloakAdminClient kc,
+            IAuditLog audit,
+            ITenantContext ctx,
+            HttpContext http,
             CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(body.Username))
@@ -172,6 +239,12 @@ internal static class TenantEndpoints
                     realmRoles: roles,
                     sendVerifyEmail: !string.IsNullOrWhiteSpace(body.Email),
                     ct: ct).ConfigureAwait(false);
+                await audit.WriteAsync(new AuditEntry(
+                    Guid.NewGuid(), tenantId, ctx.UserId, AuditActions.MemberInvited,
+                    Target: $"user={body.Username},roles={string.Join('+', roles)}",
+                    IpAddress: http.Connection.RemoteIpAddress?.ToString(),
+                    UserAgent: http.Request.Headers.UserAgent.ToString(),
+                    TimestampUtc: DateTimeOffset.UtcNow), ct).ConfigureAwait(false);
                 return Results.Created($"/tenants/{tenantId}/members/{userId}", new InvitedMemberResponse(userId, body.Username, roles));
             }
             catch (InvalidOperationException ex)
@@ -214,13 +287,21 @@ public sealed record InviteMemberRequest(string Username, string? Email, IReadOn
 /// <summary>Response for POST /tenants/{id}/members.</summary>
 public sealed record InvitedMemberResponse(string KeycloakUserId, string Username, IReadOnlyList<string> Roles);
 
-/// <summary>Body for POST /tenants/register.</summary>
+/// <summary>Body for POST /tenants/register. TenantId + InviteToken are both optional — the service
+/// picks the mode (invite / slug / auto-create) from which fields are present.</summary>
 public sealed record RegisterTenantRequest(
-    string TenantId,
+    string? TenantId,
     string? TenantName,
     string Username,
     string? Email,
-    string Password);
+    string Password,
+    string? InviteToken);
 
 /// <summary>Response for POST /tenants/register.</summary>
-public sealed record RegisteredTenantResponse(TenantRecord Tenant, string KeycloakUserId);
+public sealed record RegisteredTenantResponse(string TenantId, string KeycloakUserId, string Mode);
+
+/// <summary>Body for POST /tenants/{id}/invitations.</summary>
+public sealed record CreateInvitationRequest(string? Email, string? Role, int? TtlHours);
+
+/// <summary>Response for POST /tenants/{id}/invitations.</summary>
+public sealed record CreatedInvitationResponse(string Token, string Url, DateTimeOffset ExpiresAtUtc);

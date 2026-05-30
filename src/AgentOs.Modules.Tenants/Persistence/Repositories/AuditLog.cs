@@ -1,0 +1,63 @@
+// EF-backed IAuditLog. Writes are best-effort: a DB outage must not break the surrounding
+// signup / invitation flow, so the writer catches every exception and logs it. Reads are
+// tenant-scoped and bounded by `max` — no cross-tenant peek by construction.
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using AgentOs.Modules.Tenants.Persistence.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+
+namespace AgentOs.Modules.Tenants.Persistence.Repositories;
+
+internal sealed class EfAuditLog(TenantsDbContext db, ILogger<EfAuditLog> logger) : IAuditLog
+{
+    public async Task WriteAsync(AuditEntry entry, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        try
+        {
+            db.AuditEvents.Add(new AuditEventEntity
+            {
+                Id = entry.Id == Guid.Empty ? Guid.NewGuid() : entry.Id,
+                TenantId = entry.TenantId,
+                UserId = entry.UserId,
+                Action = entry.Action,
+                Target = entry.Target,
+                IpAddress = entry.IpAddress,
+                UserAgent = entry.UserAgent,
+                TimestampUtc = entry.TimestampUtc == default ? DateTimeOffset.UtcNow : entry.TimestampUtc,
+            });
+            await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Audit write failed for tenant={TenantId} action={Action} — surrounding op continues.",
+                entry.TenantId, entry.Action);
+        }
+    }
+
+    public async Task<IReadOnlyList<AuditEntry>> ListAsync(string tenantId, int max = 100, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        var rows = await db.AuditEvents.AsNoTracking()
+            .Where(e => e.TenantId == tenantId)
+            .OrderByDescending(e => e.TimestampUtc)
+            .Take(max)
+            .Select(e => new AuditEntry(e.Id, e.TenantId, e.UserId, e.Action, e.Target, e.IpAddress, e.UserAgent, e.TimestampUtc))
+            .ToListAsync(ct).ConfigureAwait(false);
+        return rows;
+    }
+}
+
+internal sealed class NullAuditLog : IAuditLog
+{
+    public Task WriteAsync(AuditEntry entry, CancellationToken ct = default) => Task.CompletedTask;
+
+    public Task<IReadOnlyList<AuditEntry>> ListAsync(string tenantId, int max = 100, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<AuditEntry>>([]);
+}

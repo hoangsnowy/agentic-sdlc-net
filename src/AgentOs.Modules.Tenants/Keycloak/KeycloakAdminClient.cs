@@ -58,6 +58,11 @@ public sealed class KeycloakAdminClient : IKeycloakAdminClient, IDisposable
         // Keycloak's default user-profile config requires firstName + lastName for a "fully set up"
         // account — without them the token endpoint rejects login with "Account is not fully set up".
         // We don't ask for them on the sign-up form so fall back to the username for both.
+        // emailVerified:false whenever we're about to send a verify-email action (realm-level
+        // verifyEmail then blocks login until the link is clicked). When no email goes out — admin
+        // invite without sendVerifyEmail, or self-signup with no email — leave it true so the user
+        // can log in immediately.
+        var emailVerified = !sendVerifyEmail;
         object createBody = string.IsNullOrEmpty(password)
             ? new
             {
@@ -66,7 +71,7 @@ public sealed class KeycloakAdminClient : IKeycloakAdminClient, IDisposable
                 firstName = username,
                 lastName = username,
                 enabled = true,
-                emailVerified = false,
+                emailVerified,
                 attributes = new Dictionary<string, string[]> { ["tenant"] = new[] { tenantId } },
             }
             : new
@@ -76,8 +81,7 @@ public sealed class KeycloakAdminClient : IKeycloakAdminClient, IDisposable
                 firstName = username,
                 lastName = username,
                 enabled = true,
-                // User just typed the password into the sign-up form → no email-verify hurdle.
-                emailVerified = true,
+                emailVerified,
                 attributes = new Dictionary<string, string[]> { ["tenant"] = new[] { tenantId } },
                 credentials = new[]
                 {
@@ -131,9 +135,12 @@ public sealed class KeycloakAdminClient : IKeycloakAdminClient, IDisposable
 
         if (sendVerifyEmail)
         {
+            // Self-signup users (password supplied) already chose a password → skip UPDATE_PASSWORD;
+            // admin-invited users (no password) need both: pick a password and verify the email.
+            var actionList = string.IsNullOrEmpty(password) ? InviteActions : VerifyOnlyActions;
             using var actions = BuildRequest(HttpMethod.Put,
                 $"admin/realms/{_options.Realm}/users/{userId}/execute-actions-email", token,
-                EmailActions);
+                actionList);
             using var actionsResp = await _http.SendAsync(actions, ct).ConfigureAwait(false);
             if (!actionsResp.IsSuccessStatusCode)
             {
@@ -144,6 +151,64 @@ public sealed class KeycloakAdminClient : IKeycloakAdminClient, IDisposable
         }
 
         return userId;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<KeycloakUser>> ListUsersByTenantAsync(string tenantId, int max = 200, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        var token = await GetAdminTokenAsync(ct).ConfigureAwait(false);
+        // Keycloak supports `q=tenant:<value>` since v15, but its semantics changed between minor
+        // releases — fetch + client-side filter keeps this portable for the dev realms we target.
+        using var listReq = BuildRequest(HttpMethod.Get,
+            $"admin/realms/{_options.Realm}/users?max={max}&briefRepresentation=false", token);
+        using var listResp = await _http.SendAsync(listReq, ct).ConfigureAwait(false);
+        if (!listResp.IsSuccessStatusCode)
+        {
+            var body = await listResp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            throw new InvalidOperationException($"Keycloak list-users failed ({(int)listResp.StatusCode}): {body}");
+        }
+        var dtos = await listResp.Content.ReadFromJsonAsync<List<UserDto>>(ct).ConfigureAwait(false)
+            ?? new List<UserDto>();
+        var matched = new List<KeycloakUser>(dtos.Count);
+        foreach (var dto in dtos)
+        {
+            if (dto.Attributes is null) { continue; }
+            if (!dto.Attributes.TryGetValue("tenant", out var values) || values is null) { continue; }
+            if (!values.Contains(tenantId, StringComparer.Ordinal)) { continue; }
+            var roles = await FetchRealmRolesAsync(dto.Id, token, ct).ConfigureAwait(false);
+            matched.Add(new KeycloakUser(dto.Id, dto.Username, dto.Email, dto.Enabled, dto.EmailVerified, roles));
+        }
+        return matched;
+    }
+
+    private async Task<IReadOnlyList<string>> FetchRealmRolesAsync(string userId, string token, CancellationToken ct)
+    {
+        using var req = BuildRequest(HttpMethod.Get, $"admin/realms/{_options.Realm}/users/{userId}/role-mappings/realm", token);
+        using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);
+        if (!resp.IsSuccessStatusCode) { return Array.Empty<string>(); }
+        var dtos = await resp.Content.ReadFromJsonAsync<List<KeycloakRoleDto>>(ct).ConfigureAwait(false);
+        if (dtos is null) { return Array.Empty<string>(); }
+        var roles = new List<string>(dtos.Count);
+        foreach (var d in dtos)
+        {
+            if (!string.IsNullOrEmpty(d.Name)) { roles.Add(d.Name); }
+        }
+        return roles;
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteUserAsync(string userId, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(userId);
+        var token = await GetAdminTokenAsync(ct).ConfigureAwait(false);
+        using var req = BuildRequest(HttpMethod.Delete, $"admin/realms/{_options.Realm}/users/{userId}", token);
+        using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);
+        if (!resp.IsSuccessStatusCode && resp.StatusCode != System.Net.HttpStatusCode.NotFound)
+        {
+            var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            throw new InvalidOperationException($"Keycloak delete-user failed ({(int)resp.StatusCode}): {body}");
+        }
     }
 
     private async Task<string> GetAdminTokenAsync(CancellationToken ct)
@@ -197,7 +262,8 @@ public sealed class KeycloakAdminClient : IKeycloakAdminClient, IDisposable
 
     public void Dispose() => _tokenLock.Dispose();
 
-    private static readonly string[] EmailActions = new[] { "UPDATE_PASSWORD", "VERIFY_EMAIL" };
+    private static readonly string[] InviteActions = new[] { "UPDATE_PASSWORD", "VERIFY_EMAIL" };
+    private static readonly string[] VerifyOnlyActions = new[] { "VERIFY_EMAIL" };
 
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
     {
@@ -209,4 +275,14 @@ public sealed class KeycloakAdminClient : IKeycloakAdminClient, IDisposable
         [property: JsonPropertyName("expires_in")] int ExpiresIn);
 
     private sealed record KeycloakRoleDto(string Id, string Name);
+
+    private sealed class UserDto
+    {
+        [JsonPropertyName("id")] public string Id { get; set; } = string.Empty;
+        [JsonPropertyName("username")] public string Username { get; set; } = string.Empty;
+        [JsonPropertyName("email")] public string? Email { get; set; }
+        [JsonPropertyName("enabled")] public bool Enabled { get; set; }
+        [JsonPropertyName("emailVerified")] public bool EmailVerified { get; set; }
+        [JsonPropertyName("attributes")] public Dictionary<string, List<string>>? Attributes { get; set; }
+    }
 }
