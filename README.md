@@ -128,7 +128,7 @@ dotnet build   AgentOs.slnx -c Release
 dotnet test    AgentOs.slnx -c Release
 ```
 
-Run the API on its own (Scalar UI at `http://localhost:5080/scalar/v1`):
+Run the API on its own (Scalar UI at `https://localhost:5080/scalar/v1`):
 
 ```bash
 dotnet run --project src/AgentOs.Api
@@ -143,11 +143,11 @@ dotnet run --project infra/AgentOs.AppHost
 Drive the end-to-end pipeline:
 
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:5080/auth/token \
+TOKEN=$(curl -s -X POST https://localhost:5080/auth/token \
   -H "Content-Type: application/json" \
   -d '{"user":"operator","password":"operator"}' | jq -r .token)
 
-curl -X POST http://localhost:5080/pipeline \
+curl -X POST https://localhost:5080/pipeline \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"userStory":"An admin can create, view, edit and delete products; users browse by category.","nMax":3}'
