@@ -13,6 +13,7 @@ using AgentOs.Modules.Llm;
 using AgentOs.Modules.Pipeline;
 using AgentOs.Modules.Sessions;
 using AgentOs.Modules.Tenants;
+using AgentOs.Modules.Tools;
 using AgentOs.Modules.Workspaces;
 using AgentOs.ServiceDefaults;
 using AgentOs.SharedKernel.Identity;
@@ -131,7 +132,8 @@ builder.Services.AddModulesFromAssemblies(builder.Configuration,
     typeof(PipelineModule).Assembly,
     typeof(IntegrationModule).Assembly,
     typeof(WorkspacesModule).Assembly,
-    typeof(SessionsModule).Assembly);
+    typeof(SessionsModule).Assembly,
+    typeof(ToolsModule).Assembly);
 
 builder.Services.AddSingleton<AgentOs.Web.Orchestrations.OrchestrationStore>();
 // Per-circuit UI state: each user's desktop has its own open windows. Singleton would bleed windows
