@@ -16,6 +16,7 @@
     <Project Path="src/AgentOs.Modules.RemoteAgent/AgentOs.Modules.RemoteAgent.csproj" />
     <Project Path="src/AgentOs.Modules.Tenants/AgentOs.Modules.Tenants.csproj" />
     <Project Path="src/AgentOs.Modules.Tools/AgentOs.Modules.Tools.csproj" />
+    <Project Path="src/AgentOs.Modules.Workspaces/AgentOs.Modules.Workspaces.csproj" />
     <Project Path="src/AgentOs.RemoteAgent/AgentOs.RemoteAgent.csproj" />
     <Project Path="src/AgentOs.ServiceDefaults/AgentOs.ServiceDefaults.csproj" />
     <Project Path="src/AgentOs.SharedKernel/AgentOs.SharedKernel.csproj" />

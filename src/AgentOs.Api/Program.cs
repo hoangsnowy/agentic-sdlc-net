@@ -14,6 +14,7 @@ using AgentOs.Modules.Pipeline;
 using AgentOs.Modules.RemoteAgent;
 using AgentOs.Modules.Tenants;
 using AgentOs.Modules.Tools;
+using AgentOs.Modules.Workspaces;
 using AgentOs.ServiceDefaults;
 using AgentOs.SharedKernel.Modularity;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,6 +51,7 @@ builder.Services.AddModulesFromAssemblies(builder.Configuration,
     typeof(PipelineModule).Assembly,
     typeof(ToolsModule).Assembly,
     typeof(IntegrationModule).Assembly,
+    typeof(WorkspacesModule).Assembly,
     typeof(McpModule).Assembly,
     typeof(RemoteAgentModule).Assembly);
 
