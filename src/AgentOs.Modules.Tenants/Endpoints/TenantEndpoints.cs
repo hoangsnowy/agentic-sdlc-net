@@ -98,11 +98,18 @@ internal static class TenantEndpoints
             IKeycloakAdminClient kc,
             CancellationToken ct) =>
         {
-            if (string.IsNullOrWhiteSpace(body.TenantId) ||
-                string.IsNullOrWhiteSpace(body.Username) ||
-                string.IsNullOrWhiteSpace(body.Password))
+            if (string.IsNullOrWhiteSpace(body.Username))
             {
-                return Results.BadRequest(new { error = "tenantId, username and password are required" });
+                return Results.BadRequest(new { error = "username is required" });
+            }
+            var (slugOk, slugErr) = SignupValidation.ValidateTenantId(body.TenantId);
+            if (!slugOk) { return Results.BadRequest(new { error = slugErr }); }
+            var (pwdOk, pwdErr) = SignupValidation.ValidatePassword(body.Password);
+            if (!pwdOk) { return Results.BadRequest(new { error = pwdErr }); }
+            if (!string.IsNullOrEmpty(body.Email))
+            {
+                var (emailOk, emailErr) = SignupValidation.ValidateEmail(body.Email);
+                if (!emailOk) { return Results.BadRequest(new { error = emailErr }); }
             }
 
             var existing = await repo.GetAsync(body.TenantId, ct).ConfigureAwait(false);

@@ -1,7 +1,6 @@
 @page "/signup"
 @layout AuthLayout
 @attribute [AllowAnonymous]
-@using System.Text.RegularExpressions
 @using AgentOs.Modules.Tenants
 @using AgentOs.Modules.Tenants.Keycloak
 @inject AgentOs.Modules.Tenants.Keycloak.IKeycloakAdminClient Kc
@@ -20,7 +19,7 @@
     </div>
 
     <div class="login-form">
-        <Field Label="Workspace ID" Hint="lowercase / digits / dash · 3–32 chars">
+        <Field Label="Workspace ID" Hint="lowercase / digits / dash · 1–32 chars · no leading or trailing dash">
             <input type="text" @bind="_tenantId" placeholder="acme" autocomplete="off" />
         </Field>
         <Field Label="Workspace name (optional)">
@@ -32,7 +31,7 @@
         <Field Label="Email">
             <input type="email" @bind="_email" placeholder="alice@@acme.test" autocomplete="email" />
         </Field>
-        <Field Label="Password" Hint="at least 8 characters">
+        <Field Label="Password" Hint="at least 12 chars · upper + lower + digit + symbol">
             <input type="password" @bind="_password" autocomplete="new-password" />
         </Field>
         <Field Label="Confirm password">
@@ -61,7 +60,6 @@
     private string _error = "";
     private bool _busy;
 
-    private static readonly Regex SlugRegex = new("^[a-z0-9-]{3,32}$", RegexOptions.Compiled);
     private static readonly string[] AdminRole = new[] { "admin" };
 
     private async Task Submit()
@@ -71,21 +69,17 @@
         _error = "";
         try
         {
-            if (!SlugRegex.IsMatch(_tenantId))
-            {
-                _error = "Workspace ID must be 3–32 chars, lowercase letters / digits / dash.";
-                return;
-            }
+            var (slugOk, slugErr) = SignupValidation.ValidateTenantId(_tenantId);
+            if (!slugOk) { _error = slugErr!; return; }
             if (string.IsNullOrWhiteSpace(_username))
             {
                 _error = "Admin username is required.";
                 return;
             }
-            if (_password.Length < 8)
-            {
-                _error = "Password must be at least 8 characters.";
-                return;
-            }
+            var (emailOk, emailErr) = SignupValidation.ValidateEmail(_email);
+            if (!emailOk) { _error = emailErr!; return; }
+            var (pwdOk, pwdErr) = SignupValidation.ValidatePassword(_password);
+            if (!pwdOk) { _error = pwdErr!; return; }
             if (!string.Equals(_password, _confirm, StringComparison.Ordinal))
             {
                 _error = "Passwords do not match.";
