@@ -22,18 +22,21 @@ internal sealed partial class TenantSignupService : ITenantSignupService
 
     private readonly ITenantsRepository _repo;
     private readonly IKeycloakAdminClient _kc;
+    private readonly IAuditLog _audit;
     private readonly ITimeLimitedDataProtector _protector;
     private readonly ILogger<TenantSignupService> _logger;
 
     public TenantSignupService(
         ITenantsRepository repo,
         IKeycloakAdminClient kc,
+        IAuditLog audit,
         IDataProtectionProvider dp,
         ILogger<TenantSignupService> logger)
     {
         ArgumentNullException.ThrowIfNull(dp);
         _repo = repo;
         _kc = kc;
+        _audit = audit;
         _logger = logger;
         _protector = dp.CreateProtector(ProtectorPurpose).ToTimeLimitedDataProtector();
     }
@@ -129,6 +132,18 @@ internal sealed partial class TenantSignupService : ITenantSignupService
                 throw new InvalidOperationException(
                     $"Tenant registry write failed for '{tenantId}'; Keycloak user rolled back.", dbEx);
             }
+        }
+
+        await _audit.WriteAsync(new AuditEntry(
+            Guid.NewGuid(), tenantId, kcUserId, AuditActions.SignupCompleted,
+            Target: $"mode={mode}", IpAddress: null, UserAgent: null,
+            TimestampUtc: DateTimeOffset.UtcNow), ct).ConfigureAwait(false);
+        if (createTenantRow)
+        {
+            await _audit.WriteAsync(new AuditEntry(
+                Guid.NewGuid(), tenantId, kcUserId, AuditActions.TenantCreated,
+                Target: tenantId, IpAddress: null, UserAgent: null,
+                TimestampUtc: DateTimeOffset.UtcNow), ct).ConfigureAwait(false);
         }
 
         return new TenantSignupOutcome(tenantId, kcUserId, mode);

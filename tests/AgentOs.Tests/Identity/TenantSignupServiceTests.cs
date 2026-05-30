@@ -153,7 +153,14 @@ public sealed class TenantSignupServiceTests
     }
 
     private static TenantSignupService NewService(ITenantsRepository repo, IKeycloakAdminClient kc) =>
-        new(repo, kc, new EphemeralDataProtectionProvider(), NullLogger<TenantSignupService>.Instance);
+        new(repo, kc, new NullAuditLog(), new EphemeralDataProtectionProvider(), NullLogger<TenantSignupService>.Instance);
+
+    private sealed class NullAuditLog : IAuditLog
+    {
+        public Task WriteAsync(AuditEntry entry, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<IReadOnlyList<AuditEntry>> ListAsync(string tenantId, int max = 100, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<AuditEntry>>([]);
+    }
 
     private sealed class FakeRepo : ITenantsRepository
     {

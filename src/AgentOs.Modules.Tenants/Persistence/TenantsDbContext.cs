@@ -14,6 +14,7 @@ internal sealed class TenantsDbContext : DbContext
     }
 
     public DbSet<TenantEntity> Tenants => Set<TenantEntity>();
+    public DbSet<AuditEventEntity> AuditEvents => Set<AuditEventEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -27,6 +28,19 @@ internal sealed class TenantsDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasMaxLength(64);
             e.Property(x => x.Name).HasMaxLength(256).IsRequired();
+        });
+
+        modelBuilder.Entity<AuditEventEntity>(e =>
+        {
+            e.ToTable("audit_events");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Action).HasMaxLength(64).IsRequired();
+            e.Property(x => x.UserId).HasMaxLength(128);
+            e.Property(x => x.Target).HasMaxLength(256);
+            e.Property(x => x.IpAddress).HasMaxLength(64);
+            e.Property(x => x.UserAgent).HasMaxLength(512);
+            e.HasIndex(x => new { x.TenantId, x.TimestampUtc });
         });
     }
 }

@@ -123,11 +123,14 @@ internal static class TenantEndpoints
         // Admin-only: mint a stateless invitation token. The returned `url` (signup page + ?invite=)
         // is what the inviter pastes into an email or chat. Tokens are signed + time-limited; they
         // cannot be revoked before expiry — keep TTL short for high-trust environments.
-        app.MapPost("/tenants/{tenantId}/invitations", (
+        app.MapPost("/tenants/{tenantId}/invitations", async (
             string tenantId,
             CreateInvitationRequest body,
             ITenantSignupService signup,
-            HttpContext http) =>
+            IAuditLog audit,
+            ITenantContext ctx,
+            HttpContext http,
+            CancellationToken ct) =>
         {
             var role = string.IsNullOrWhiteSpace(body.Role) ? "member" : body.Role;
             if (role is not ("admin" or "member"))
@@ -138,6 +141,12 @@ internal static class TenantEndpoints
             var minted = signup.CreateInvitation(tenantId, role, body.Email, ttl);
             var origin = $"{http.Request.Scheme}://{http.Request.Host}";
             var url = $"{origin}/signup?invite={Uri.EscapeDataString(minted.Token)}";
+            await audit.WriteAsync(new AuditEntry(
+                Guid.NewGuid(), tenantId, ctx.UserId, AuditActions.InvitationMinted,
+                Target: $"role={role}{(body.Email is null ? "" : $",email={body.Email}")}",
+                IpAddress: http.Connection.RemoteIpAddress?.ToString(),
+                UserAgent: http.Request.Headers.UserAgent.ToString(),
+                TimestampUtc: DateTimeOffset.UtcNow), ct).ConfigureAwait(false);
             return Results.Ok(new CreatedInvitationResponse(minted.Token, url, minted.ExpiresAtUtc));
         })
         .WithName("TenantsCreateInvitation")
@@ -180,11 +189,33 @@ internal static class TenantEndpoints
         .WithTags("Tenants")
         .RequireAuthorization("Admin");
 
+        app.MapGet("/tenants/{tenantId}/audit", async (
+            string tenantId,
+            IAuditLog audit,
+            ITenantContext ctx,
+            int? max,
+            CancellationToken ct) =>
+        {
+            if (!string.Equals(ctx.TenantId, tenantId, StringComparison.Ordinal))
+            {
+                return Results.Forbid();
+            }
+            var rows = await audit.ListAsync(tenantId, max ?? 100, ct).ConfigureAwait(false);
+            return Results.Ok(rows);
+        })
+        .WithName("TenantsAudit")
+        .WithSummary("Audit trail for the current tenant (tenant Admin only)")
+        .WithTags("Tenants")
+        .RequireAuthorization("Admin");
+
         app.MapPost("/tenants/{tenantId}/members", async (
             string tenantId,
             InviteMemberRequest body,
             ITenantsRepository repo,
             IKeycloakAdminClient kc,
+            IAuditLog audit,
+            ITenantContext ctx,
+            HttpContext http,
             CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(body.Username))
@@ -208,6 +239,12 @@ internal static class TenantEndpoints
                     realmRoles: roles,
                     sendVerifyEmail: !string.IsNullOrWhiteSpace(body.Email),
                     ct: ct).ConfigureAwait(false);
+                await audit.WriteAsync(new AuditEntry(
+                    Guid.NewGuid(), tenantId, ctx.UserId, AuditActions.MemberInvited,
+                    Target: $"user={body.Username},roles={string.Join('+', roles)}",
+                    IpAddress: http.Connection.RemoteIpAddress?.ToString(),
+                    UserAgent: http.Request.Headers.UserAgent.ToString(),
+                    TimestampUtc: DateTimeOffset.UtcNow), ct).ConfigureAwait(false);
                 return Results.Created($"/tenants/{tenantId}/members/{userId}", new InvitedMemberResponse(userId, body.Username, roles));
             }
             catch (InvalidOperationException ex)

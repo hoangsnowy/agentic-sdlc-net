@@ -37,10 +37,12 @@ public sealed class TenantsModule : IModule, IEndpointModule, IInitializableModu
                 opt.UseNpgsql(connectionString, npg =>
                     npg.MigrationsHistoryTable("__EFMigrationsHistory", schema: "tenants")));
             services.AddScoped<ITenantsRepository, TenantsRepository>();
+            services.AddScoped<IAuditLog, EfAuditLog>();
         }
         else
         {
             services.TryAddSingleton<ITenantsRepository, NullTenantsRepository>();
+            services.TryAddSingleton<IAuditLog, NullAuditLog>();
         }
     }
 
