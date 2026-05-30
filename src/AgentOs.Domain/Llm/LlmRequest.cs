@@ -13,13 +13,22 @@ namespace AgentOs.Domain.Llm;
 /// <param name="Temperature">Sampling temperature. Default 0 (deterministic).</param>
 /// <param name="MaxTokens">Output token limit. Default 4096.</param>
 /// <param name="JsonSchema">JSON schema (optional) for structured output. Null = free-form text.</param>
+/// <param name="Tools">
+/// Optional tool names the agent is allowed to invoke during this call. The gateway resolves each
+/// name via the configured <see cref="AgentOs.Domain.Tools.IToolRegistry"/>, exposes the tool to
+/// the provider (Anthropic/OpenAI/MCP), and runs the tool-call loop transparently before returning
+/// the final <see cref="LlmResponse"/>. Null/empty = no tools available for this call. Names that
+/// aren't registered are silently dropped — the orchestrator never sends an unresolved tool to the
+/// model.
+/// </param>
 public sealed record LlmRequest(
     string SystemPrompt,
     string UserPrompt,
     string Model,
     double Temperature = 0.0,
     int MaxTokens = 4096,
-    string? JsonSchema = null)
+    string? JsonSchema = null,
+    System.Collections.Generic.IReadOnlyList<string>? Tools = null)
 {
     /// <summary>
     /// Validates required values. Throws <see cref="System.ArgumentException"/> if invalid.

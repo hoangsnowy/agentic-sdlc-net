@@ -9,6 +9,7 @@
     <ProjectReference Include="..\AgentOs.Domain\AgentOs.Domain.csproj" />
     <ProjectReference Include="..\AgentOs.SharedKernel\AgentOs.SharedKernel.csproj" />
     <ProjectReference Include="..\AgentOs.Modules.Llm\AgentOs.Modules.Llm.csproj" />
+    <ProjectReference Include="..\AgentOs.Modules.Tools\AgentOs.Modules.Tools.csproj" />
   </ItemGroup>
 
   <ItemGroup>

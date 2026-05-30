@@ -2,6 +2,7 @@
 // Writes the generated code + tests from a pipeline run to a temporary directory and runs `dotnet build`
 // to confirm the agent's output actually compiles. Captures stdout/stderr + exit code.
 
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using AgentOs.Domain.Pipeline;
@@ -9,8 +10,8 @@ using AgentOs.Domain.Pipeline;
 namespace AgentOs.Modules.Integration;
 
 /// <summary>
-/// Verifies that a pipeline-generated <see cref="PipelineResult"/> compiles. The implementation writes the
-/// generated files to a temp directory, ensures a project file exists, and runs <c>dotnet build</c>.
+/// Verifies that a set of generated source files compiles. The implementation writes the files
+/// to a temp directory, ensures a <c>.csproj</c> exists, runs <c>dotnet build</c>, then cleans up.
 /// </summary>
 /// <remarks>
 /// Not a real sandbox — code runs in the host process with the same permissions as the Web server.
@@ -20,7 +21,18 @@ public interface IBuildVerifier
 {
     /// <summary>Runs <c>dotnet build</c> on the generated files; returns success + captured output.</summary>
     Task<BuildVerifyResult> VerifyAsync(PipelineResult result, CancellationToken ct);
+
+    /// <summary>
+    /// Primitive build-verify call. Used by the build_verifier tool (Epic E2) so callers that
+    /// don't carry a full <see cref="PipelineResult"/> can hand a flat file list directly.
+    /// </summary>
+    Task<BuildVerifyResult> VerifyFilesAsync(IEnumerable<BuildVerifyFile> files, CancellationToken ct);
 }
+
+/// <summary>One file passed to <see cref="IBuildVerifier.VerifyFilesAsync"/>.</summary>
+/// <param name="Path">Relative path under the scratch workdir (e.g. <c>src/Domain/Product.cs</c>).</param>
+/// <param name="Content">File content (UTF-8 text).</param>
+public sealed record BuildVerifyFile(string Path, string Content);
 
 /// <summary>Result of <see cref="IBuildVerifier.VerifyAsync"/>.</summary>
 /// <param name="Success"><c>true</c> when the build exited with code 0.</param>
