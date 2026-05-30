@@ -1,10 +1,11 @@
-// Aspire AppHost — single F5 brings up Postgres + Keycloak + API + Web for local dev. azd promotes
-// Postgres to Azure Database for PostgreSQL flexible server in the cloud. The DB resource is named
-// "DefaultConnection" so WithReference injects ConnectionStrings__DefaultConnection. Keycloak realm
-// "agentic" is auto-imported from ./infra/keycloak; its HTTP URL is forwarded as
+// Aspire AppHost — single F5 brings up Postgres + Keycloak + MailHog + API + Web for local dev.
+// azd promotes Postgres to Azure Database for PostgreSQL flexible server in the cloud. The DB
+// resource is named "DefaultConnection" so WithReference injects ConnectionStrings__DefaultConnection.
+// Keycloak realm "agentic" is auto-imported from ./infra/keycloak; its HTTP URL is forwarded as
 // Auth__Keycloak__Authority so the API (JWT bearer) and the Web (OIDC code flow) both wire against
 // it without any hardcoded URL. Web pins the HTTP endpoint to 5180 to match the realm's
-// `agentic-web` client redirectUris.
+// `agentic-web` client redirectUris. MailHog catches all dev verification emails on UI port 8025;
+// Keycloak sends to it via the realm-level smtpServer config (host=mailhog port=1025).
 using Aspire.Hosting;
 
 var builder = DistributedApplication.CreateBuilder(args);
@@ -13,13 +14,21 @@ var db = builder.AddAzurePostgresFlexibleServer("postgres")
     .RunAsContainer(c => c.WithDataVolume())
     .AddDatabase("DefaultConnection", databaseName: "agentos");
 
+// MailHog — dev SMTP catcher. Realm smtpServer points here; UI at http://localhost:8025 shows
+// every verification email Keycloak emits during signup. Container name "mailhog" doubles as the
+// hostname Keycloak resolves over the Aspire container network.
+var mailhog = builder.AddContainer("mailhog", "mailhog/mailhog")
+    .WithHttpEndpoint(port: 8025, targetPort: 8025, name: "ui")
+    .WithEndpoint(port: 1025, targetPort: 1025, name: "smtp", scheme: "tcp");
+
 // Force a deterministic admin user so the KeycloakAdminClient and the realm-provisioning flow
 // can rely on the master-realm `admin / admin` credentials in dev. Production uses a parameter.
 var keycloak = builder.AddKeycloak("keycloak", port: 8080)
     .WithDataVolume()
     .WithRealmImport("../../infra/keycloak")
     .WithEnvironment("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
-    .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin");
+    .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
+    .WaitFor(mailhog);
 
 builder.AddProject<Projects.AgentOs_Api>("api")
     .WithReference(db).WaitFor(db)

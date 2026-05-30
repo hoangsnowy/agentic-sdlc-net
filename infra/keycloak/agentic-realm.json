@@ -5,9 +5,19 @@
   "registrationEmailAsUsername": false,
   "loginWithEmailAllowed": true,
   "resetPasswordAllowed": true,
+  "verifyEmail": true,
   "rememberMe": true,
   "accessTokenLifespan": 1800,
   "sslRequired": "external",
+  "smtpServer": {
+    "host": "mailhog",
+    "port": "1025",
+    "from": "noreply@agentic.local",
+    "fromDisplayName": "AgentOS",
+    "ssl": "false",
+    "starttls": "false",
+    "auth": "false"
+  },
   "attributes": {
     "userProfileEnabled": "true"
   },

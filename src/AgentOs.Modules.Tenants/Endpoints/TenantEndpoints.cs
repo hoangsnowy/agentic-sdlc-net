@@ -132,7 +132,7 @@ internal static class TenantEndpoints
                     email: body.Email ?? string.Empty,
                     tenantId: body.TenantId,
                     realmRoles: AdminRole,
-                    sendVerifyEmail: false,
+                    sendVerifyEmail: !string.IsNullOrWhiteSpace(body.Email),
                     password: body.Password,
                     ct: ct).ConfigureAwait(false);
             }

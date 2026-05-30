@@ -106,7 +106,7 @@
                     email: _email,
                     tenantId: _tenantId,
                     realmRoles: AdminRole,
-                    sendVerifyEmail: false,
+                    sendVerifyEmail: true,
                     password: _password);
             }
             catch (InvalidOperationException ex)
@@ -115,7 +115,7 @@
                 return;
             }
 
-            Nav.NavigateTo("/account/login", forceLoad: true);
+            Nav.NavigateTo("/signup/verify-email", forceLoad: false);
         }
         finally
         {

@@ -58,6 +58,11 @@ public sealed class KeycloakAdminClient : IKeycloakAdminClient, IDisposable
         // Keycloak's default user-profile config requires firstName + lastName for a "fully set up"
         // account — without them the token endpoint rejects login with "Account is not fully set up".
         // We don't ask for them on the sign-up form so fall back to the username for both.
+        // emailVerified:false whenever we're about to send a verify-email action (realm-level
+        // verifyEmail then blocks login until the link is clicked). When no email goes out — admin
+        // invite without sendVerifyEmail, or self-signup with no email — leave it true so the user
+        // can log in immediately.
+        var emailVerified = !sendVerifyEmail;
         object createBody = string.IsNullOrEmpty(password)
             ? new
             {
@@ -66,7 +71,7 @@ public sealed class KeycloakAdminClient : IKeycloakAdminClient, IDisposable
                 firstName = username,
                 lastName = username,
                 enabled = true,
-                emailVerified = false,
+                emailVerified,
                 attributes = new Dictionary<string, string[]> { ["tenant"] = new[] { tenantId } },
             }
             : new
@@ -76,8 +81,7 @@ public sealed class KeycloakAdminClient : IKeycloakAdminClient, IDisposable
                 firstName = username,
                 lastName = username,
                 enabled = true,
-                // User just typed the password into the sign-up form → no email-verify hurdle.
-                emailVerified = true,
+                emailVerified,
                 attributes = new Dictionary<string, string[]> { ["tenant"] = new[] { tenantId } },
                 credentials = new[]
                 {
@@ -131,9 +135,12 @@ public sealed class KeycloakAdminClient : IKeycloakAdminClient, IDisposable
 
         if (sendVerifyEmail)
         {
+            // Self-signup users (password supplied) already chose a password → skip UPDATE_PASSWORD;
+            // admin-invited users (no password) need both: pick a password and verify the email.
+            var actionList = string.IsNullOrEmpty(password) ? InviteActions : VerifyOnlyActions;
             using var actions = BuildRequest(HttpMethod.Put,
                 $"admin/realms/{_options.Realm}/users/{userId}/execute-actions-email", token,
-                EmailActions);
+                actionList);
             using var actionsResp = await _http.SendAsync(actions, ct).ConfigureAwait(false);
             if (!actionsResp.IsSuccessStatusCode)
             {
@@ -197,7 +204,8 @@ public sealed class KeycloakAdminClient : IKeycloakAdminClient, IDisposable
 
     public void Dispose() => _tokenLock.Dispose();
 
-    private static readonly string[] EmailActions = new[] { "UPDATE_PASSWORD", "VERIFY_EMAIL" };
+    private static readonly string[] InviteActions = new[] { "UPDATE_PASSWORD", "VERIFY_EMAIL" };
+    private static readonly string[] VerifyOnlyActions = new[] { "VERIFY_EMAIL" };
 
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
     {
