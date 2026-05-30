@@ -32,8 +32,16 @@ var mailhog = builder.AddContainer("mailhog", "mailhog/mailhog")
 var keycloak = builder.AddKeycloak("keycloak", port: 8080)
     .WithDataVolume()
     .WithRealmImport("../../infra/keycloak")
+    // Custom AgentOs login/account theme — Breeze look matching the Web Studio. KC scans
+    // /opt/keycloak/themes/<name>/ for themes; bind-mount our source dir so edits to the CSS
+    // hot-reload without rebuilding the container (KC auto-detects in dev mode).
+    .WithBindMount("../../infra/keycloak/themes/agentos", "/opt/keycloak/themes/agentos")
     .WithEnvironment("KC_BOOTSTRAP_ADMIN_USERNAME", kcAdminUsername)
     .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", kcAdminPassword)
+    // Dev only: disable theme caching so CSS edits show up on reload (default is 24h cache).
+    .WithEnvironment("KC_SPI_THEME_STATIC_MAX_AGE", "-1")
+    .WithEnvironment("KC_SPI_THEME_CACHE_THEMES", "false")
+    .WithEnvironment("KC_SPI_THEME_CACHE_TEMPLATES", "false")
     .WaitFor(mailhog);
 
 builder.AddProject<Projects.AgentOs_Api>("api")
