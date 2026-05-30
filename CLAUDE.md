@@ -95,6 +95,8 @@ Agents call **tools** through the gateway: `LlmRequest.Tools = ["build_verifier"
 
 **Test stack**: xUnit **v3** (`xunit.v3`), Shouldly (NOT FluentAssertions — v8 went commercial), NSubstitute. Naming: `MethodName_StateUnderTest_ExpectedBehavior`.
 
+**Verification (E2E in the running app — unit-green is necessary, NOT sufficient)**: a change with any user-facing value is not "done" until it (1) is wired into the **AgentOS Web desktop** (registered in `AppCatalog` + the `WindowHost` switch), not Api-only, and (2) has been exercised in the *running app* — open the app, run the flow, capture a screenshot as proof. Run the full stack with `dotnet run --project infra/AgentOs.AppHost` (Aspire wires Postgres + Keycloak + Api + Web). Note the circuit constraint: a Blazor interactive-Server component has no `HttpContext`, so it can't use `ITenantContext` — read the tenant from `AuthenticationState` and pass it explicitly, or call a tenant-explicit service. Do NOT defer a feature's UI to a far-off milestone without explicit sign-off — every milestone must show something in the desktop.
+
 **Commits**: Conventional Commits in English (e.g. `feat(tools):`, `fix(llm):`, `chore(deps):`). Co-author Claude when pair-coded. CI fails if the Release build/test fails.
 
 **Language**: code, comments, docs, and LLM prompts/output are English (the repo was standardized from Vietnamese). The agent system prompts (`Modules.Pipeline/Prompts/*.cs`) open with `"You are the <X> Agent …"` — this opening line is used as a routing key; keep the prompt and any matcher in sync if reworded.

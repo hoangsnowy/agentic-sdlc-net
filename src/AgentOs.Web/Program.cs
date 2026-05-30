@@ -10,7 +10,9 @@ using AgentOs.Modules.Identity.Auth;
 using AgentOs.Modules.Integration;
 using AgentOs.Modules.Llm;
 using AgentOs.Modules.Pipeline;
+using AgentOs.Modules.Sessions;
 using AgentOs.Modules.Tenants;
+using AgentOs.Modules.Workspaces;
 using AgentOs.ServiceDefaults;
 using AgentOs.SharedKernel.Identity;
 using AgentOs.SharedKernel.Modularity;
@@ -103,7 +105,9 @@ builder.Services.AddModulesFromAssemblies(builder.Configuration,
     typeof(IdentityModule).Assembly,
     typeof(TenantsModule).Assembly,
     typeof(PipelineModule).Assembly,
-    typeof(IntegrationModule).Assembly);
+    typeof(IntegrationModule).Assembly,
+    typeof(WorkspacesModule).Assembly,
+    typeof(SessionsModule).Assembly);
 
 builder.Services.AddSingleton<AgentOs.Web.Orchestrations.OrchestrationStore>();
 builder.Services.AddSingleton<AgentOs.Web.Services.ToastService>();

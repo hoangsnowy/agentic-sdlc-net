@@ -22,4 +22,7 @@ internal sealed class NullWorkspaceRepository : IWorkspaceRepository
 
     public Task<bool> RemoveAsync(Guid id, CancellationToken ct = default)
         => Task.FromResult(false);
+
+    public Task<IReadOnlyList<WorkspaceEntity>> ListForTenantAsync(string tenantId, CancellationToken ct = default)
+        => Task.FromResult<IReadOnlyList<WorkspaceEntity>>(Array.Empty<WorkspaceEntity>());
 }

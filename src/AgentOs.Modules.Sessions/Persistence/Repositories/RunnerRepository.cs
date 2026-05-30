@@ -59,4 +59,37 @@ internal sealed class RunnerRepository : IRunnerRepository
         await _db.SaveChangesAsync(ct).ConfigureAwait(false);
         return true;
     }
+
+    public async Task<IReadOnlyList<RunnerEntity>> ListForTenantAsync(string tenantId, CancellationToken ct = default)
+    {
+        return await _db.Runners
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(r => r.TenantId == tenantId)
+            .OrderByDescending(r => r.CreatedAtUtc)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task AddForTenantAsync(RunnerEntity runner, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(runner);
+        _db.Runners.Add(runner);
+        await _db.SaveChangesAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<bool> SetStatusForTenantAsync(string tenantId, Guid id, string status, CancellationToken ct = default)
+    {
+        var row = await _db.Runners
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenantId, ct)
+            .ConfigureAwait(false);
+        if (row is null)
+        {
+            return false;
+        }
+        row.Status = status;
+        await _db.SaveChangesAsync(ct).ConfigureAwait(false);
+        return true;
+    }
 }

@@ -18,4 +18,12 @@ public interface ISessionRepository
 
     /// <summary>Mark a session Closed with the given timestamp. Returns false if not found in this tenant.</summary>
     Task<bool> CloseAsync(Guid id, DateTimeOffset closedAtUtc, CancellationToken ct = default);
+
+    // ---- Tenant-explicit overloads: bypass the ambient query filter for callers without an
+    // ITenantContext (a Blazor Server circuit has no HttpContext). The entity passed to
+    // AddForTenantAsync must already carry its TenantId. ----
+
+    Task<IReadOnlyList<RemoteSessionEntity>> ListForTenantAsync(string tenantId, CancellationToken ct = default);
+    Task AddForTenantAsync(RemoteSessionEntity session, CancellationToken ct = default);
+    Task<bool> CloseForTenantAsync(string tenantId, Guid id, DateTimeOffset closedAtUtc, CancellationToken ct = default);
 }

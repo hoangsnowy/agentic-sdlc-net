@@ -18,4 +18,12 @@ public interface IRunnerRepository
 
     /// <summary>Set a runner's status (e.g. revoke). Returns false if no such runner in this tenant.</summary>
     Task<bool> SetStatusAsync(Guid id, string status, CancellationToken ct = default);
+
+    // ---- Tenant-explicit overloads: bypass the ambient query filter for callers without an
+    // ITenantContext (a Blazor Server circuit has no HttpContext). Pass the tenant id from the
+    // signed-in principal; the entity passed to AddForTenantAsync must already carry its TenantId. ----
+
+    Task<IReadOnlyList<RunnerEntity>> ListForTenantAsync(string tenantId, CancellationToken ct = default);
+    Task AddForTenantAsync(RunnerEntity runner, CancellationToken ct = default);
+    Task<bool> SetStatusForTenantAsync(string tenantId, Guid id, string status, CancellationToken ct = default);
 }

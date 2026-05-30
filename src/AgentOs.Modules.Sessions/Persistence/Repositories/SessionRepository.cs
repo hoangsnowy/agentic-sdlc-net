@@ -60,4 +60,38 @@ internal sealed class SessionRepository : ISessionRepository
         await _db.SaveChangesAsync(ct).ConfigureAwait(false);
         return true;
     }
+
+    public async Task<IReadOnlyList<RemoteSessionEntity>> ListForTenantAsync(string tenantId, CancellationToken ct = default)
+    {
+        return await _db.Sessions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(s => s.TenantId == tenantId)
+            .OrderByDescending(s => s.CreatedAtUtc)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task AddForTenantAsync(RemoteSessionEntity session, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        _db.Sessions.Add(session);
+        await _db.SaveChangesAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<bool> CloseForTenantAsync(string tenantId, Guid id, DateTimeOffset closedAtUtc, CancellationToken ct = default)
+    {
+        var row = await _db.Sessions
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(s => s.Id == id && s.TenantId == tenantId, ct)
+            .ConfigureAwait(false);
+        if (row is null)
+        {
+            return false;
+        }
+        row.Status = "Closed";
+        row.ClosedAtUtc = closedAtUtc;
+        await _db.SaveChangesAsync(ct).ConfigureAwait(false);
+        return true;
+    }
 }

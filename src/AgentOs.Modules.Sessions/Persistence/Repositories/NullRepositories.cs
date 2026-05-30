@@ -23,6 +23,14 @@ internal sealed class NullRunnerRepository : IRunnerRepository
 
     public Task<bool> SetStatusAsync(Guid id, string status, CancellationToken ct = default) =>
         Task.FromResult(false);
+
+    public Task<IReadOnlyList<RunnerEntity>> ListForTenantAsync(string tenantId, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<RunnerEntity>>(Array.Empty<RunnerEntity>());
+
+    public Task AddForTenantAsync(RunnerEntity runner, CancellationToken ct = default) => Task.CompletedTask;
+
+    public Task<bool> SetStatusForTenantAsync(string tenantId, Guid id, string status, CancellationToken ct = default) =>
+        Task.FromResult(false);
 }
 
 internal sealed class NullSessionRepository : ISessionRepository
@@ -36,6 +44,14 @@ internal sealed class NullSessionRepository : ISessionRepository
     public Task AddAsync(RemoteSessionEntity session, CancellationToken ct = default) => Task.CompletedTask;
 
     public Task<bool> CloseAsync(Guid id, DateTimeOffset closedAtUtc, CancellationToken ct = default) =>
+        Task.FromResult(false);
+
+    public Task<IReadOnlyList<RemoteSessionEntity>> ListForTenantAsync(string tenantId, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<RemoteSessionEntity>>(Array.Empty<RemoteSessionEntity>());
+
+    public Task AddForTenantAsync(RemoteSessionEntity session, CancellationToken ct = default) => Task.CompletedTask;
+
+    public Task<bool> CloseForTenantAsync(string tenantId, Guid id, DateTimeOffset closedAtUtc, CancellationToken ct = default) =>
         Task.FromResult(false);
 }
 

@@ -48,6 +48,17 @@ internal sealed class WorkspaceRepository : IWorkspaceRepository
         await _db.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
+    public async Task<IReadOnlyList<WorkspaceEntity>> ListForTenantAsync(string tenantId, CancellationToken ct = default)
+    {
+        return await _db.Workspaces
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(w => w.TenantId == tenantId)
+            .OrderByDescending(w => w.CreatedAtUtc)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
+
     public async Task<bool> RemoveAsync(Guid id, CancellationToken ct = default)
     {
         var row = await _db.Workspaces.FirstOrDefaultAsync(w => w.Id == id, ct).ConfigureAwait(false);
