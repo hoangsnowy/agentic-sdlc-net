@@ -26,6 +26,13 @@ public sealed class ToolsModule : IModule, IInitializableModule
         services.TryAddSingleton<IToolRegistry, InMemoryToolRegistry>();
         services.TryAddSingleton<IToolPolicy, PermissiveToolPolicy>();
         services.TryAddSingleton<IToolInvocationLog, InMemoryToolInvocationLog>();
+
+        // M1 — the shared policy-gate + invoke + evidence seam. Every governed execution path
+        // (the in-process LLM tool loop and the remote-session executor) resolves this so tools
+        // are gated + recorded identically regardless of where the side effect runs.
+        services.TryAddSingleton<IToolGateway>(sp => new DefaultToolGateway(
+            sp.GetService<IToolPolicy>(),
+            sp.GetService<IToolInvocationLog>()));
     }
 
     public Task InitializeAsync(IServiceProvider services, CancellationToken ct)
