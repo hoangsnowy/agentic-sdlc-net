@@ -1,6 +1,9 @@
 {
   "realm": "agentic",
   "enabled": true,
+  "displayName": "AgentOs",
+  "displayNameHtml": "AgentOs",
+  "loginTheme": "agentos",
   "registrationAllowed": true,
   "registrationEmailAsUsername": false,
   "loginWithEmailAllowed": true,
